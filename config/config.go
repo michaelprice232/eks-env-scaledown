@@ -45,7 +45,7 @@ func NewConfig() (Config, error) {
 		return conf, fmt.Errorf("valiadting ScaleAction: %w", err)
 	}
 
-	kc, err := k8sClient()
+	kc, err := newK8sClient()
 	if err != nil {
 		return conf, fmt.Errorf("creating k8s client: %w", err)
 	}
@@ -76,7 +76,7 @@ func setupLogging() {
 	log.SetDefault(log.New(handler))
 }
 
-func k8sClient() (*kubernetes.Clientset, error) {
+func newK8sClient() (*kubernetes.Clientset, error) {
 	var client *kubernetes.Clientset
 	var config *rest.Config
 	var err error
