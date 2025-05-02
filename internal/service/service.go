@@ -8,26 +8,34 @@ import (
 	"github.com/michaelprice232/eks-env-scaledown/config"
 )
 
+const (
+	StartupOrderAnnotationKey         = "eks-env-scaledown/startup-order"
+	OriginalReplicasAnnotationKey     = "eks-env-scaledown/original-replicas"
+	UpdatedAtAnnotationKey            = "eks-env-scaledown/updated-at"
+	DefaultStartUpGroup           int = 100
+)
+
 type K8sResource struct {
-	Name         string
-	Type         string
-	Namespace    string
-	ReplicaCount int32
+	Name           string
+	Type           string
+	Namespace      string
+	ReplicaCount   int32
+	Selector       string
+	podsTerminated bool
 }
 
 type StartUpOrder map[int][]K8sResource
 type Service struct {
-	conf         config.Config
+	Conf         config.Config
 	StartUpOrder StartUpOrder
 }
 
 func NewService(c config.Config) (*Service, error) {
-
-	return &Service{conf: c}, nil
+	return &Service{Conf: c}, nil
 }
 
 func (s *Service) Run() error {
-	switch s.conf.Action {
+	switch s.Conf.Action {
 	case config.ScaleUp:
 		if err := s.EnvScaleUp(); err != nil {
 			return fmt.Errorf("scaling environment up: %w", err)
@@ -45,6 +53,7 @@ func (s *Service) Run() error {
 
 func (s *Service) EnvScaleUp() error {
 	log.Info("Scaling environment up")
+	// todo: implement. Add a wait between each group to allow time for the MongoDB cluster to fully initialise
 
 	return nil
 }
@@ -66,7 +75,7 @@ func (s *Service) EnvScaleDown() error {
 	for _, order := range scaleDownOrder {
 		log.Debug("Scaling down group", "group", order)
 		if err := s.ScaleDownGroup(order); err != nil {
-			return fmt.Errorf("scaling down group %d: %w", 1, err)
+			return fmt.Errorf("scaling down group %d: %w", order, err)
 		}
 	}
 
