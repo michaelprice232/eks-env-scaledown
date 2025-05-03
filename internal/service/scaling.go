@@ -18,12 +18,12 @@ func (s *Service) ScaleDownGroup(groupNumber int) error {
 		return fmt.Errorf("ScaleDownGroup %d not found in the StartUpOrder map", groupNumber)
 	}
 
-	for _, group := range resources {
-		if group.Type == "deployment" {
+	for _, resource := range resources {
+		if resource.Type == "deployment" {
 			// Use a retry function to handle conflicts on updates from concurrent changes
 			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
 			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				result, getErr := s.Conf.K8sClient.AppsV1().Deployments(group.Namespace).Get(context.TODO(), group.Name, metav1.GetOptions{})
+				result, getErr := s.Conf.K8sClient.AppsV1().Deployments(resource.Namespace).Get(context.TODO(), resource.Name, metav1.GetOptions{})
 				if getErr != nil {
 					return getErr
 				}
@@ -33,25 +33,25 @@ func (s *Service) ScaleDownGroup(groupNumber int) error {
 				}
 
 				result.Spec.Replicas = int32Ptr(0)
-				result.Annotations[OriginalReplicasAnnotationKey] = strconv.FormatInt(int64(group.ReplicaCount), 10)
+				result.Annotations[OriginalReplicasAnnotationKey] = strconv.FormatInt(int64(resource.ReplicaCount), 10)
 				result.Annotations[UpdatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
 
 				// RetryOnConflict expects the error to be returned unwrapped
 				// https://pkg.go.dev/k8s.io/client-go/util/retry@v0.33.0#RetryOnConflict
-				_, updateErr := s.Conf.K8sClient.AppsV1().Deployments(group.Namespace).Update(context.TODO(), result, metav1.UpdateOptions{})
+				_, updateErr := s.Conf.K8sClient.AppsV1().Deployments(resource.Namespace).Update(context.TODO(), result, metav1.UpdateOptions{})
 				return updateErr
 			})
 			if retryErr != nil {
-				return fmt.Errorf("failed to update deployment %s in namespace %s: %w", group.Name, group.Namespace, retryErr)
+				return fmt.Errorf("failed to update deployment %s in namespace %s: %w", resource.Name, resource.Namespace, retryErr)
 			}
-			log.Debug("Deployment scaled down", "deployment", group.Name, "namespace", group.Namespace)
+			log.Debug("Deployment scaled down", "deployment", resource.Name, "namespace", resource.Namespace)
 		}
 
-		if group.Type == "statefulset" {
+		if resource.Type == "statefulset" {
 			// Use a retry function to handle conflicts on updates from concurrent changes
 			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
 			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				result, getErr := s.Conf.K8sClient.AppsV1().StatefulSets(group.Namespace).Get(context.TODO(), group.Name, metav1.GetOptions{})
+				result, getErr := s.Conf.K8sClient.AppsV1().StatefulSets(resource.Namespace).Get(context.TODO(), resource.Name, metav1.GetOptions{})
 				if getErr != nil {
 					return getErr
 				}
@@ -61,18 +61,18 @@ func (s *Service) ScaleDownGroup(groupNumber int) error {
 				}
 
 				result.Spec.Replicas = int32Ptr(0)
-				result.Annotations[OriginalReplicasAnnotationKey] = strconv.FormatInt(int64(group.ReplicaCount), 10)
+				result.Annotations[OriginalReplicasAnnotationKey] = strconv.FormatInt(int64(resource.ReplicaCount), 10)
 				result.Annotations[UpdatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
 
 				// RetryOnConflict expects the error to be returned unwrapped
 				// https://pkg.go.dev/k8s.io/client-go/util/retry@v0.33.0#RetryOnConflict
-				_, updateErr := s.Conf.K8sClient.AppsV1().StatefulSets(group.Namespace).Update(context.TODO(), result, metav1.UpdateOptions{})
+				_, updateErr := s.Conf.K8sClient.AppsV1().StatefulSets(resource.Namespace).Update(context.TODO(), result, metav1.UpdateOptions{})
 				return updateErr
 			})
 			if retryErr != nil {
-				return fmt.Errorf("failed to update %s %s in namespace %s: %w", group.Type, group.Name, group.Namespace, retryErr)
+				return fmt.Errorf("failed to update %s %s in namespace %s: %w", resource.Type, resource.Name, resource.Namespace, retryErr)
 			}
-			log.Debug("Statefulset scaled down", "statefulset", group.Name, "namespace", group.Namespace)
+			log.Debug("Statefulset scaled down", "statefulset", resource.Name, "namespace", resource.Namespace)
 		}
 	}
 
@@ -133,3 +133,89 @@ func podsStillRunning(resources []K8sResource) bool {
 }
 
 func int32Ptr(i int32) *int32 { return &i }
+
+func (s *Service) ScaleUpGroup(groupNumber int) error {
+	var resources []K8sResource
+	var found bool
+	if resources, found = s.StartUpOrder[groupNumber]; !found {
+		return fmt.Errorf("ScaleUpGroup %d not found in the StartUpOrder map", groupNumber)
+	}
+
+	for _, resource := range resources {
+		if resource.Type == "deployment" {
+			// Use a retry function to handle conflicts on updates from concurrent changes
+			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
+			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				result, getErr := s.Conf.K8sClient.AppsV1().Deployments(resource.Namespace).Get(context.TODO(), resource.Name, metav1.GetOptions{})
+				if getErr != nil {
+					return fmt.Errorf("getting deployment %s: %w", result.Name, getErr)
+				}
+
+				replicasRaw, found := result.Annotations[OriginalReplicasAnnotationKey]
+				if !found {
+					log.Warn("NumReplicas Annotation key not set. The resource might have been created after the scaledown. Skipping", "key", OriginalReplicasAnnotationKey, "type", resource.Type, "resource", result.Name, "namespace", result.Namespace)
+					return nil
+				}
+
+				replica64, err := strconv.ParseInt(replicasRaw, 10, 32)
+				if err != nil {
+					return fmt.Errorf("parsing an int from %s: %w", replicasRaw, err)
+				}
+				replicas := int32(replica64)
+
+				result.Spec.Replicas = &replicas
+				delete(result.Annotations, OriginalReplicasAnnotationKey)
+				result.Annotations[UpdatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
+
+				// RetryOnConflict expects the error to be returned unwrapped
+				// https://pkg.go.dev/k8s.io/client-go/util/retry@v0.33.0#RetryOnConflict
+				_, updateErr := s.Conf.K8sClient.AppsV1().Deployments(resource.Namespace).Update(context.TODO(), result, metav1.UpdateOptions{})
+				return updateErr
+			})
+			if retryErr != nil {
+				return fmt.Errorf("failed to update deployment %s in namespace %s: %w", resource.Name, resource.Namespace, retryErr)
+			}
+			log.Debug("Deployment scaled down", "deployment", resource.Name, "namespace", resource.Namespace)
+		}
+
+		if resource.Type == "statefulset" {
+			// Use a retry function to handle conflicts on updates from concurrent changes
+			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
+			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				result, getErr := s.Conf.K8sClient.AppsV1().StatefulSets(resource.Namespace).Get(context.TODO(), resource.Name, metav1.GetOptions{})
+				if getErr != nil {
+					return fmt.Errorf("getting statefulset %s: %w", result.Name, getErr)
+				}
+
+				replicasRaw, found := result.Annotations[OriginalReplicasAnnotationKey]
+				if !found {
+					log.Warn("NumReplicas Annotation key not set. The resource might have been created after the scaledown. Skipping", "key", OriginalReplicasAnnotationKey, "type", resource.Type, "resource", result.Name, "namespace", result.Namespace)
+					return nil
+				}
+
+				replica64, err := strconv.ParseInt(replicasRaw, 10, 32)
+				if err != nil {
+					return fmt.Errorf("parsing an int from %s: %w", replicasRaw, err)
+				}
+				replicas := int32(replica64)
+
+				result.Spec.Replicas = &replicas
+				delete(result.Annotations, OriginalReplicasAnnotationKey)
+				result.Annotations[UpdatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
+
+				// RetryOnConflict expects the error to be returned unwrapped
+				// https://pkg.go.dev/k8s.io/client-go/util/retry@v0.33.0#RetryOnConflict
+				_, updateErr := s.Conf.K8sClient.AppsV1().StatefulSets(resource.Namespace).Update(context.TODO(), result, metav1.UpdateOptions{})
+				return updateErr
+			})
+			if retryErr != nil {
+				return fmt.Errorf("failed to update %s %s in namespace %s: %w", resource.Type, resource.Name, resource.Namespace, retryErr)
+			}
+			log.Debug("Statefulset scaled down", "statefulset", resource.Name, "namespace", resource.Namespace)
+		}
+	}
+
+	// todo: check that all the deployments/statefulsets in this group have fully rolled out before returning
+
+	return nil
+}

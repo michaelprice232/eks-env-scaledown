@@ -52,8 +52,27 @@ func (s *Service) Run() error {
 }
 
 func (s *Service) EnvScaleUp() error {
-	log.Info("Scaling environment up")
 	// todo: implement. Add a wait between each group to allow time for the MongoDB cluster to fully initialise
+	log.Info("Scaling environment up")
+
+	if err := s.BuildStartUpOrder(); err != nil {
+		return fmt.Errorf("building startup order: %w", err)
+	}
+
+	scaleDownOrder := make([]int, 0, len(s.StartUpOrder))
+	for order := range s.StartUpOrder {
+		scaleDownOrder = append(scaleDownOrder, order)
+	}
+
+	sort.Sort(sort.IntSlice(scaleDownOrder))
+	log.Debug("Scale up order", "order", scaleDownOrder)
+
+	for _, order := range scaleDownOrder {
+		log.Debug("Scaling up group", "group", order)
+		if err := s.ScaleUpGroup(order); err != nil {
+			return fmt.Errorf("scaling up group %d: %w", order, err)
+		}
+	}
 
 	return nil
 }
@@ -69,6 +88,7 @@ func (s *Service) EnvScaleDown() error {
 	for order := range s.StartUpOrder {
 		scaleDownOrder = append(scaleDownOrder, order)
 	}
+
 	sort.Sort(sort.Reverse(sort.IntSlice(scaleDownOrder)))
 	log.Debug("Scale down order", "order", scaleDownOrder)
 
