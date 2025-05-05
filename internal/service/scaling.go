@@ -11,6 +11,11 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
+const (
+	timeout      = time.Minute * 15
+	timeInterval = time.Second * 2
+)
+
 func (s *Service) ScaleDownGroup(groupNumber int) error {
 	var resources []K8sResource
 	var found bool
@@ -84,8 +89,8 @@ func (s *Service) ScaleDownGroup(groupNumber int) error {
 }
 
 func (s *Service) waitForPodTermination(resources []K8sResource) error {
-	interval := time.Tick(time.Second * 2)
-	ctx, cancelCtx := context.WithTimeout(context.Background(), time.Minute*3)
+	interval := time.Tick(timeInterval)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), timeout)
 	defer cancelCtx()
 
 	for {
@@ -175,7 +180,7 @@ func (s *Service) ScaleUpGroup(groupNumber int) error {
 			if retryErr != nil {
 				return fmt.Errorf("failed to update deployment %s in namespace %s: %w", resource.Name, resource.Namespace, retryErr)
 			}
-			log.Debug("Deployment scaled down", "deployment", resource.Name, "namespace", resource.Namespace)
+			log.Debug("Deployment scaled up", "deployment", resource.Name, "namespace", resource.Namespace)
 		}
 
 		if resource.Type == "statefulset" {
@@ -211,11 +216,80 @@ func (s *Service) ScaleUpGroup(groupNumber int) error {
 			if retryErr != nil {
 				return fmt.Errorf("failed to update %s %s in namespace %s: %w", resource.Type, resource.Name, resource.Namespace, retryErr)
 			}
-			log.Debug("Statefulset scaled down", "statefulset", resource.Name, "namespace", resource.Namespace)
+			log.Debug("Statefulset scaled up", "statefulset", resource.Name, "namespace", resource.Namespace)
 		}
 	}
 
-	// todo: check that all the deployments/statefulsets in this group have fully rolled out before returning
+	if err := s.waitForPodsReady(resources); err != nil {
+		return fmt.Errorf("waiting for pods to be ready: %w", err)
+	}
 
 	return nil
+}
+
+func (s *Service) waitForPodsReady(resources []K8sResource) error {
+	interval := time.Tick(timeInterval)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), timeout)
+	defer cancelCtx()
+
+	for {
+		select {
+		case <-interval:
+			if podsUpdatedAndReady(resources) {
+				return nil
+			}
+
+			for i := range resources {
+				// If we range over the slice, we are working with copies only, so can't update the podsTerminated correctly
+				r := &resources[i]
+
+				if r.Type == "deployment" {
+					log.Debug("Checking if pods are updated and ready", "type", r.Type, "resource", r.Name, "namespace", r.Namespace)
+					deployment, err := s.Conf.K8sClient.AppsV1().Deployments(r.Namespace).Get(ctx, r.Name, metav1.GetOptions{})
+					if err != nil {
+						return fmt.Errorf("getting deloyment %s in namespace %s: %w", r.Name, r.Namespace, err)
+					}
+					if deployment.Status.AvailableReplicas == *deployment.Spec.Replicas &&
+						deployment.Status.UpdatedReplicas == *deployment.Spec.Replicas &&
+						deployment.Status.ReadyReplicas == *deployment.Spec.Replicas &&
+						deployment.Status.ObservedGeneration >= deployment.Generation {
+						r.podsUpdatedAndReady = true
+						log.Debug("Deployment ready", "type", r.Type, "resource", r.Name, "namespace", r.Namespace)
+					}
+					continue
+				}
+				if r.Type == "statefulset" {
+					log.Debug("Checking if pods are updated and ready", "type", r.Type, "resource", r.Name, "namespace", r.Namespace)
+					statefulset, err := s.Conf.K8sClient.AppsV1().StatefulSets(r.Namespace).Get(ctx, r.Name, metav1.GetOptions{})
+					if err != nil {
+						return fmt.Errorf("getting statefulset %s in namespace %s: %w", r.Name, r.Namespace, err)
+					}
+					if statefulset.Status.AvailableReplicas == *statefulset.Spec.Replicas &&
+						statefulset.Status.UpdatedReplicas == *statefulset.Spec.Replicas &&
+						statefulset.Status.ReadyReplicas == *statefulset.Spec.Replicas &&
+						statefulset.Status.ObservedGeneration >= statefulset.Generation {
+						r.podsUpdatedAndReady = true
+						log.Debug("Statefulset ready", "type", r.Type, "resource", r.Name, "namespace", r.Namespace)
+					}
+					continue
+				}
+
+				return fmt.Errorf("expected 'deployment' or 'statefulset' type, but got '%s'", r.Type)
+			}
+
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func podsUpdatedAndReady(resources []K8sResource) bool {
+	podsReady := true
+	for _, r := range resources {
+		if r.podsUpdatedAndReady == false {
+			podsReady = false
+		}
+	}
+
+	return podsReady
 }

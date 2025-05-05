@@ -16,12 +16,13 @@ const (
 )
 
 type K8sResource struct {
-	Name           string
-	Type           string
-	Namespace      string
-	ReplicaCount   int32
-	Selector       string
-	podsTerminated bool
+	Name                string
+	Type                string
+	Namespace           string
+	ReplicaCount        int32
+	Selector            string
+	podsTerminated      bool
+	podsUpdatedAndReady bool
 }
 
 type StartUpOrder map[int][]K8sResource
@@ -52,7 +53,6 @@ func (s *Service) Run() error {
 }
 
 func (s *Service) EnvScaleUp() error {
-	// todo: implement. Add a wait between each group to allow time for the MongoDB cluster to fully initialise
 	log.Info("Scaling environment up")
 
 	if err := s.BuildStartUpOrder(); err != nil {
