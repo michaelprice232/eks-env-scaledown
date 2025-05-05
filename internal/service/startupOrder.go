@@ -30,7 +30,7 @@ func (s *Service) BuildStartUpOrder() error {
 	for _, d := range deployments.Items {
 		selector, err := convertLabelSelectorToString(d.Spec.Selector)
 		if err != nil {
-			return fmt.Errorf("waiting for pod termination: %w", err)
+			return err
 		}
 
 		res := K8sResource{
@@ -44,7 +44,9 @@ func (s *Service) BuildStartUpOrder() error {
 		if orderKey, found := d.Annotations[StartupOrderAnnotationKey]; found {
 			so, err := strconv.Atoi(orderKey)
 			if err != nil {
-				return fmt.Errorf("parsing int from string in startup order annotation '%s': %w", orderKey, err)
+				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "deployment", d.Name, "namespace", d.Namespace, "originalOrder", so, "key", StartupOrderAnnotationKey)
+				orders[DefaultStartUpGroup] = append(orders[DefaultStartUpGroup], res)
+				continue
 			}
 
 			if so > 99 {
@@ -68,7 +70,7 @@ func (s *Service) BuildStartUpOrder() error {
 	for _, ss := range statefulset.Items {
 		selector, err := convertLabelSelectorToString(ss.Spec.Selector)
 		if err != nil {
-			return fmt.Errorf("waiting for pod termination: %w", err)
+			return err
 		}
 
 		res := K8sResource{
@@ -82,7 +84,9 @@ func (s *Service) BuildStartUpOrder() error {
 		if orderKey, found := ss.Annotations[StartupOrderAnnotationKey]; found {
 			so, err := strconv.Atoi(orderKey)
 			if err != nil {
-				return fmt.Errorf("parsing int from string in startup order annotation '%s': %w", orderKey, err)
+				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "statefulset", ss.Name, "namespace", ss.Namespace, "originalOrder", so, "key", StartupOrderAnnotationKey)
+				orders[DefaultStartUpGroup] = append(orders[DefaultStartUpGroup], res)
+				continue
 			}
 
 			if so > 99 {
