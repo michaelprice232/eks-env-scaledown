@@ -33,6 +33,11 @@ func (s *Service) ScaleDownGroup(groupNumber int) error {
 					return getErr
 				}
 
+				if *result.Spec.Replicas == 0 {
+					log.Warn("The workload has already been scaled to zero. Skipping", "type", resource.Type, "resource", result.Name, "namespace", result.Namespace)
+					return nil
+				}
+
 				if result.Annotations == nil {
 					result.Annotations = make(map[string]string)
 				}
@@ -59,6 +64,11 @@ func (s *Service) ScaleDownGroup(groupNumber int) error {
 				result, getErr := s.Conf.K8sClient.AppsV1().StatefulSets(resource.Namespace).Get(context.TODO(), resource.Name, metav1.GetOptions{})
 				if getErr != nil {
 					return getErr
+				}
+
+				if *result.Spec.Replicas == 0 {
+					log.Warn("The workload has already been scaled to zero. Skipping", "type", resource.Type, "resource", result.Name, "namespace", result.Namespace)
+					return nil
 				}
 
 				if result.Annotations == nil {
