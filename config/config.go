@@ -37,8 +37,6 @@ func (c Config) validateAction() error {
 func NewConfig() (Config, error) {
 	var conf Config
 
-	setupLogging()
-
 	conf.Action = ScaleAction(os.Getenv("SCALE_ACTION"))
 	err := conf.validateAction()
 	if err != nil {
@@ -54,7 +52,7 @@ func NewConfig() (Config, error) {
 	return conf, nil
 }
 
-func setupLogging() {
+func SetupLogging() {
 	logLevelStr := strings.ToLower(os.Getenv("LOG_LEVEL"))
 	var level log.Level
 
