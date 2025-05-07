@@ -2,15 +2,15 @@ package config
 
 import (
 	"fmt"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 	log "log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
+	"path/filepath"
 )
 
 type ScaleAction string
