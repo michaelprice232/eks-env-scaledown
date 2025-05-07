@@ -15,9 +15,9 @@ const (
 	DefaultStartUpGroup           int = 100
 )
 
-type K8sResource struct {
+type k8sResource struct {
 	Name                string
-	Type                string
+	ResourceType        string
 	Namespace           string
 	ReplicaCount        int32
 	Selector            string
@@ -25,24 +25,24 @@ type K8sResource struct {
 	podsUpdatedAndReady bool
 }
 
-type StartUpOrder map[int][]K8sResource
+type startUpOrder map[int][]k8sResource
 type Service struct {
-	Conf         config.Config
-	StartUpOrder StartUpOrder
+	conf         config.Config
+	startUpOrder startUpOrder
 }
 
 func NewService(c config.Config) (*Service, error) {
-	return &Service{Conf: c}, nil
+	return &Service{conf: c}, nil
 }
 
 func (s *Service) Run() error {
-	switch s.Conf.Action {
+	switch s.conf.Action {
 	case config.ScaleUp:
-		if err := s.EnvScaleUp(); err != nil {
+		if err := s.envScaleUp(); err != nil {
 			return fmt.Errorf("scaling environment up: %w", err)
 		}
 	case config.ScaleDown:
-		if err := s.EnvScaleDown(); err != nil {
+		if err := s.envScaleDown(); err != nil {
 			return fmt.Errorf("scaling environment down: %w", err)
 		}
 	default:
@@ -52,24 +52,24 @@ func (s *Service) Run() error {
 	return nil
 }
 
-func (s *Service) EnvScaleUp() error {
+func (s *Service) envScaleUp() error {
 	log.Info("Scaling environment up")
 
-	if err := s.BuildStartUpOrder(); err != nil {
+	if err := s.buildStartUpOrder(); err != nil {
 		return fmt.Errorf("building startup order: %w", err)
 	}
 
-	scaleDownOrder := make([]int, 0, len(s.StartUpOrder))
-	for order := range s.StartUpOrder {
-		scaleDownOrder = append(scaleDownOrder, order)
+	scaleOrder := make([]int, 0, len(s.startUpOrder))
+	for order := range s.startUpOrder {
+		scaleOrder = append(scaleOrder, order)
 	}
 
-	sort.Sort(sort.IntSlice(scaleDownOrder))
-	log.Debug("Scale up order", "order", scaleDownOrder)
+	sort.Sort(sort.IntSlice(scaleOrder))
+	log.Debug("Scale up order", "order", scaleOrder)
 
-	for _, order := range scaleDownOrder {
-		log.Debug("Scaling up group", "group", order)
-		if err := s.ScaleUpGroup(order); err != nil {
+	for _, order := range scaleOrder {
+		log.Info("Scaling up group", "group", order)
+		if err := s.scaleUpGroup(order); err != nil {
 			return fmt.Errorf("scaling up group %d: %w", order, err)
 		}
 	}
@@ -77,26 +77,31 @@ func (s *Service) EnvScaleUp() error {
 	return nil
 }
 
-func (s *Service) EnvScaleDown() error {
+func (s *Service) envScaleDown() error {
 	log.Info("Scaling environment down")
 
-	if err := s.BuildStartUpOrder(); err != nil {
+	if err := s.buildStartUpOrder(); err != nil {
 		return fmt.Errorf("building startup order: %w", err)
 	}
 
-	scaleDownOrder := make([]int, 0, len(s.StartUpOrder))
-	for order := range s.StartUpOrder {
-		scaleDownOrder = append(scaleDownOrder, order)
+	scaleOrder := make([]int, 0, len(s.startUpOrder))
+	for order := range s.startUpOrder {
+		scaleOrder = append(scaleOrder, order)
 	}
 
-	sort.Sort(sort.Reverse(sort.IntSlice(scaleDownOrder)))
-	log.Debug("Scale down order", "order", scaleDownOrder)
+	sort.Sort(sort.Reverse(sort.IntSlice(scaleOrder)))
+	log.Debug("Scale down order", "order", scaleOrder)
 
-	for _, order := range scaleDownOrder {
-		log.Debug("Scaling down group", "group", order)
-		if err := s.ScaleDownGroup(order); err != nil {
+	for _, order := range scaleOrder {
+		log.Info("Scaling down group", "group", order)
+		if err := s.scaleDownGroup(order); err != nil {
 			return fmt.Errorf("scaling down group %d: %w", order, err)
 		}
+	}
+
+	if err := s.terminateStandalonePods(); err != nil {
+		log.Info("Terminating standalone pods")
+		return fmt.Errorf("terminating standalone pods: %w", err)
 	}
 
 	return nil
