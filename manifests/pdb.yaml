@@ -1,0 +1,11 @@
+# Demonstrates that the PDB does not block the deployment from being scaled to zero by the API
+# PDB only consider voluntary type disruptions
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nginx-without-annotation
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: nginx-without-annotation

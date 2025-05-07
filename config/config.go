@@ -4,13 +4,13 @@ import (
 	"fmt"
 	log "log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"path/filepath"
 )
 
 type ScaleAction string
@@ -79,9 +79,15 @@ func newK8sClient() (*kubernetes.Clientset, error) {
 	var config *rest.Config
 	var err error
 
-	runningLocally := os.Getenv("RUNNING_LOCALLY")
-	if runningLocally == "true" {
-		config, err = clientcmd.BuildConfigFromFlags("", filepath.Join(homedir.HomeDir(), ".kube", "config"))
+	// Use a context from the local kubeconfig file if set (running locally), otherwise expect to be running in the cluster itself
+	k8sContext := os.Getenv("KUBE_CONTEXT")
+	if k8sContext != "" {
+		log.Info("Using local kubeconfig context", "context", k8sContext)
+		localContextFile := filepath.Join(homedir.HomeDir(), ".kube", "config")
+		loadingRules := &clientcmd.ClientConfigLoadingRules{ExplicitPath: localContextFile}
+		overrides := &clientcmd.ConfigOverrides{CurrentContext: k8sContext}
+		clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
+		config, err = clientConfig.ClientConfig()
 		if err != nil {
 			return nil, fmt.Errorf("building K8s client config from the local host: %w", err)
 		}
