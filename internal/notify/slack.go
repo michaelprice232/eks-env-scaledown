@@ -63,3 +63,12 @@ func PostMessage(slackClient *SlackClient, message string) error {
 
 	return nil
 }
+
+func Slack(slackClient *SlackClient, msg string) {
+	if slackClient != nil {
+		slackErr := PostMessage(slackClient, msg)
+		if slackErr != nil {
+			log.Error("sending Slack message", "error", slackErr)
+		}
+	}
+}
