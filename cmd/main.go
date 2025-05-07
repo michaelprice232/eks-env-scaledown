@@ -43,13 +43,13 @@ func main() {
 	if err != nil {
 		log.Error("creating service", "error", err)
 		notify.Slack(slackClient, fmt.Sprintf("error whilst creating service: %v", err))
-		os.Exit(3)
+		os.Exit(4)
 	}
 
 	if err = s.Run(); err != nil {
 		log.Error("running", "error", err)
 		notify.Slack(slackClient, fmt.Sprintf("error whilst running: %v", err))
-		os.Exit(4)
+		os.Exit(5)
 	}
 
 	// Re-enable the New Relic alert policy if config has been set
@@ -58,7 +58,7 @@ func main() {
 		if err != nil {
 			log.Error("updating New Relic", "error", err)
 			notify.Slack(slackClient, fmt.Sprintf("error whilst updating New Relic: %v", err))
-			os.Exit(3)
+			os.Exit(6)
 		}
 	}
 }
