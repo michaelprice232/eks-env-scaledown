@@ -23,7 +23,7 @@ func NewNewRelicClient() (*NewRelicClient, error) {
 	}
 	policyID64, err := strconv.ParseInt(policyID, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse envar NEW_RELIC_ALERT_POLICY_ID %s into an int. Will not disable any New Relic alert policies", policyID)
+		return nil, fmt.Errorf("unable to parse envar NEW_RELIC_ALERT_POLICY_ID %s into an int", policyID)
 	}
 
 	apiKey := os.Getenv("NEW_RELIC_API_KEY")
@@ -50,7 +50,27 @@ const (
 	ScaleDown ScaleAction = "ScaleDown"
 )
 
+func (sa ScaleAction) validateAction() error {
+	switch sa {
+	case ScaleUp, ScaleDown:
+		return nil
+	default:
+		return fmt.Errorf("invalid Action: must be 'ScaleUp' or 'ScaleDown'")
+	}
+}
+
 func UpdateNewRelicAlertPolicy(nrClient *NewRelicClient, action ScaleAction) error {
+	if err := action.validateAction(); err != nil {
+		return err
+	}
+
+	if action == ScaleUp {
+		log.Info("Enabling New Relic alert policy", "action", action, "policyID", nrClient.PolicyID)
+	}
+	if action == ScaleDown {
+		log.Info("Suspending New Relic alert policy", "action", action, "policyID", nrClient.PolicyID)
+	}
+
 	alertConditions, err := nrClient.Client.ListNrqlConditions(nrClient.PolicyID)
 	if err != nil {
 		return fmt.Errorf("listing nrql conditions in policyID %d: %w", nrClient.PolicyID, err)
@@ -65,8 +85,6 @@ func UpdateNewRelicAlertPolicy(nrClient *NewRelicClient, action ScaleAction) err
 		case ScaleDown:
 			log.Debug("Suspending alert condition", "name", c.Name)
 			c.Enabled = false
-		default:
-			return fmt.Errorf("action not recogised: %v", action)
 		}
 
 		_, err = nrClient.Client.UpdateNrqlCondition(*c)

@@ -14,7 +14,7 @@ import (
 func Test_BuildStartUpOrder(t *testing.T) {
 	type fields struct {
 		Conf         config.Config
-		StartUpOrder StartUpOrder
+		StartUpOrder startUpOrder
 	}
 	tests := []struct {
 		name                string
@@ -106,17 +106,17 @@ func Test_BuildStartUpOrder(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Service{
-				Conf:         tt.fields.Conf,
-				StartUpOrder: tt.fields.StartUpOrder,
+				conf:         tt.fields.Conf,
+				startUpOrder: tt.fields.StartUpOrder,
 			}
-			err := s.BuildStartUpOrder()
+			err := s.buildStartUpOrder()
 			if tt.wantErr {
 				assert.Error(t, err, "Expected error in test case: %s", tt.name)
 			} else {
 				assert.NoError(t, err, "Unexpected error in test case: %s", tt.name)
 			}
 
-			assert.Equal(t, tt.expectedNumOfGroups, len(s.StartUpOrder), "Unexpected number of startup groups in test case: %s", tt.name)
+			assert.Equal(t, tt.expectedNumOfGroups, len(s.startUpOrder), "Unexpected number of startup groups in test case: %s", tt.name)
 
 		})
 	}

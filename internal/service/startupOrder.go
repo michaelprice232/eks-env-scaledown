@@ -18,11 +18,14 @@ func convertLabelSelectorToString(ls *metav1.LabelSelector) (string, error) {
 	return selector.String(), nil
 }
 
-func (s *Service) BuildStartUpOrder() error {
-	orders := make(StartUpOrder)
+func (s *Service) buildStartUpOrder() error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	orders := make(startUpOrder)
 
 	// Deployments
-	deployments, err := s.Conf.K8sClient.AppsV1().Deployments("").List(context.TODO(), metav1.ListOptions{})
+	deployments, err := s.conf.K8sClient.AppsV1().Deployments("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("listing K8s deployments: %w", err)
 	}
@@ -33,9 +36,9 @@ func (s *Service) BuildStartUpOrder() error {
 			return err
 		}
 
-		res := K8sResource{
+		res := k8sResource{
 			Name:         d.Name,
-			Type:         "deployment",
+			ResourceType: "deployment",
 			Namespace:    d.Namespace,
 			ReplicaCount: *d.Spec.Replicas,
 			Selector:     selector,
@@ -44,13 +47,13 @@ func (s *Service) BuildStartUpOrder() error {
 		if orderKey, found := d.Annotations[StartupOrderAnnotationKey]; found {
 			so, err := strconv.Atoi(orderKey)
 			if err != nil {
-				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "deployment", d.Name, "namespace", d.Namespace, "originalOrder", so, "key", StartupOrderAnnotationKey)
+				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "deployment", d.Name, "Namespace", d.Namespace, "originalOrder", so, "key", StartupOrderAnnotationKey)
 				orders[DefaultStartUpGroup] = append(orders[DefaultStartUpGroup], res)
 				continue
 			}
 
 			if so > 99 {
-				log.Warn("StartUpOrder number can only be from 0 to 99. Assigning to default group", "deployment", d.Name, "namespace", d.Namespace, "originalOrder", so)
+				log.Warn("startUpOrder number can only be from 0 to 99. Assigning to default group", "deployment", d.Name, "Namespace", d.Namespace, "originalOrder", so)
 				orders[DefaultStartUpGroup] = append(orders[DefaultStartUpGroup], res)
 				continue
 			}
@@ -63,7 +66,7 @@ func (s *Service) BuildStartUpOrder() error {
 	}
 
 	// Statefulsets
-	statefulset, err := s.Conf.K8sClient.AppsV1().StatefulSets("").List(context.TODO(), metav1.ListOptions{})
+	statefulset, err := s.conf.K8sClient.AppsV1().StatefulSets("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("listing K8s statefulsets: %w", err)
 	}
@@ -73,9 +76,9 @@ func (s *Service) BuildStartUpOrder() error {
 			return err
 		}
 
-		res := K8sResource{
+		res := k8sResource{
 			Name:         ss.Name,
-			Type:         "statefulset",
+			ResourceType: "statefulset",
 			Namespace:    ss.Namespace,
 			ReplicaCount: *ss.Spec.Replicas,
 			Selector:     selector,
@@ -84,13 +87,13 @@ func (s *Service) BuildStartUpOrder() error {
 		if orderKey, found := ss.Annotations[StartupOrderAnnotationKey]; found {
 			so, err := strconv.Atoi(orderKey)
 			if err != nil {
-				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "statefulset", ss.Name, "namespace", ss.Namespace, "originalOrder", so, "key", StartupOrderAnnotationKey)
+				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "statefulset", ss.Name, "Namespace", ss.Namespace, "originalOrder", so, "key", StartupOrderAnnotationKey)
 				orders[DefaultStartUpGroup] = append(orders[DefaultStartUpGroup], res)
 				continue
 			}
 
 			if so > 99 {
-				log.Warn("StartUpOrder number can only be from 0 to 99. Assigning to default group", "statefulset", ss.Name, "namespace", ss.Namespace, "originalOrder", so)
+				log.Warn("startUpOrder number can only be from 0 to 99. Assigning to default group", "statefulset", ss.Name, "Namespace", ss.Namespace, "originalOrder", so)
 				orders[DefaultStartUpGroup] = append(orders[DefaultStartUpGroup], res)
 				continue
 			}
@@ -102,8 +105,8 @@ func (s *Service) BuildStartUpOrder() error {
 		orders[DefaultStartUpGroup] = append(orders[DefaultStartUpGroup], res)
 	}
 
-	log.Debug("Completed building StartUpOrder", "orders", orders)
-	s.StartUpOrder = orders
+	log.Debug("Completed building startUpOrder", "orders", orders)
+	s.startUpOrder = orders
 
 	return nil
 }
