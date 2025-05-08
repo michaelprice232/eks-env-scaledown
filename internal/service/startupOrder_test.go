@@ -34,7 +34,7 @@ func Test_BuildStartUpOrder(t *testing.T) {
 								Name:      "nginx",
 								Namespace: "web",
 								Annotations: map[string]string{
-									StartupOrderAnnotationKey: "1",
+									startupOrderAnnotationKey: "1",
 								},
 							},
 							Spec: v1.DeploymentSpec{
@@ -49,7 +49,7 @@ func Test_BuildStartUpOrder(t *testing.T) {
 								Name:      "mongodb",
 								Namespace: "database",
 								Annotations: map[string]string{
-									StartupOrderAnnotationKey: "0",
+									startupOrderAnnotationKey: "0",
 								},
 							},
 							Spec: v1.StatefulSetSpec{
@@ -87,7 +87,7 @@ func Test_BuildStartUpOrder(t *testing.T) {
 								Name:      "mongodb",
 								Namespace: "database",
 								Annotations: map[string]string{
-									StartupOrderAnnotationKey: "0",
+									startupOrderAnnotationKey: "0",
 								},
 							},
 							Spec: v1.StatefulSetSpec{

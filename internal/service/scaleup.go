@@ -31,9 +31,9 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 					return fmt.Errorf("getting deployment %s: %w", result.Name, getErr)
 				}
 
-				replicasRaw, found := result.Annotations[OriginalReplicasAnnotationKey]
+				replicasRaw, found := result.Annotations[originalReplicasAnnotationKey]
 				if !found {
-					log.Warn("NumReplicas Annotation key not set. The resource might have been created after the scaledown. Skipping", "key", OriginalReplicasAnnotationKey, "type", resource.ResourceType, "resource", result.Name, "Namespace", result.Namespace)
+					log.Warn("NumReplicas Annotation key not set. The resource might have been created after the scaledown. Skipping", "key", originalReplicasAnnotationKey, "type", resource.ResourceType, "resource", result.Name, "Namespace", result.Namespace)
 					return nil
 				}
 
@@ -44,8 +44,8 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 				replicas := int32(replica64)
 
 				result.Spec.Replicas = &replicas
-				delete(result.Annotations, OriginalReplicasAnnotationKey)
-				result.Annotations[UpdatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
+				delete(result.Annotations, originalReplicasAnnotationKey)
+				result.Annotations[updatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
 
 				// RetryOnConflict expects the error to be returned unwrapped
 				// https://pkg.go.dev/k8s.io/client-go/util/retry@v0.33.0#RetryOnConflict
@@ -67,9 +67,9 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 					return fmt.Errorf("getting statefulset %s: %w", result.Name, getErr)
 				}
 
-				replicasRaw, found := result.Annotations[OriginalReplicasAnnotationKey]
+				replicasRaw, found := result.Annotations[originalReplicasAnnotationKey]
 				if !found {
-					log.Warn("NumReplicas Annotation key not set. The resource might have been created after the scaledown. Skipping", "key", OriginalReplicasAnnotationKey, "type", resource.ResourceType, "resource", result.Name, "Namespace", result.Namespace)
+					log.Warn("NumReplicas Annotation key not set. The resource might have been created after the scaledown. Skipping", "key", originalReplicasAnnotationKey, "type", resource.ResourceType, "resource", result.Name, "Namespace", result.Namespace)
 					return nil
 				}
 
@@ -80,8 +80,8 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 				replicas := int32(replica64)
 
 				result.Spec.Replicas = &replicas
-				delete(result.Annotations, OriginalReplicasAnnotationKey)
-				result.Annotations[UpdatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
+				delete(result.Annotations, originalReplicasAnnotationKey)
+				result.Annotations[updatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
 
 				// RetryOnConflict expects the error to be returned unwrapped
 				// https://pkg.go.dev/k8s.io/client-go/util/retry@v0.33.0#RetryOnConflict

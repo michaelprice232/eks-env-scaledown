@@ -10,13 +10,14 @@ import (
 )
 
 const (
-	StartupOrderAnnotationKey         = "eks-env-scaledown/startup-order"
-	OriginalReplicasAnnotationKey     = "eks-env-scaledown/original-replicas"
-	UpdatedAtAnnotationKey            = "eks-env-scaledown/updated-at"
-	DefaultStartUpGroup           int = 100
-
-	timeout      = time.Minute * 15
-	timeInterval = time.Second * 2
+	startupOrderAnnotationKey           = "eks-env-scaledown/startup-order"
+	originalReplicasAnnotationKey       = "eks-env-scaledown/original-replicas"
+	updatedAtAnnotationKey              = "eks-env-scaledown/updated-at"
+	cronJobWasDisabledAnnotationKey     = "eks-env-scaledown/cronjob-was-disabled"
+	defaultStartUpGroup             int = 100
+	cronJobAppName                      = "eks-env-scaledown"
+	timeout                             = time.Minute * 15
+	timeInterval                        = time.Second * 2
 )
 
 type k8sResource struct {
@@ -59,6 +60,13 @@ func (s *Service) Run() error {
 func (s *Service) envScaleUp() error {
 	log.Info("Scaling environment up")
 
+	if s.conf.SuspendCronJob {
+		log.Info("Enabling all CronJobs except for the ones which manage this app or were previously disabled", "AppLabel", cronJobAppName)
+		if err := s.updateCronJobs(); err != nil {
+			return fmt.Errorf("re-enabling CronJobs: %w", err)
+		}
+	}
+
 	if err := s.buildStartUpOrder(); err != nil {
 		return fmt.Errorf("building startup order: %w", err)
 	}
@@ -83,6 +91,13 @@ func (s *Service) envScaleUp() error {
 
 func (s *Service) envScaleDown() error {
 	log.Info("Scaling environment down")
+
+	if s.conf.SuspendCronJob {
+		log.Info("Suspending all CronJobs except for the ones which manage this app", "AppLabel", cronJobAppName)
+		if err := s.updateCronJobs(); err != nil {
+			return fmt.Errorf("suspending CronJobs: %w", err)
+		}
+	}
 
 	if err := s.buildStartUpOrder(); err != nil {
 		return fmt.Errorf("building startup order: %w", err)
@@ -112,3 +127,4 @@ func (s *Service) envScaleDown() error {
 }
 
 func int32Ptr(i int32) *int32 { return &i }
+func boolPtr(b bool) *bool    { return &b }
