@@ -4,6 +4,7 @@ import (
 	"fmt"
 	log "log/slog"
 	"sort"
+	"time"
 
 	"github.com/michaelprice232/eks-env-scaledown/config"
 )
@@ -13,6 +14,9 @@ const (
 	OriginalReplicasAnnotationKey     = "eks-env-scaledown/original-replicas"
 	UpdatedAtAnnotationKey            = "eks-env-scaledown/updated-at"
 	DefaultStartUpGroup           int = 100
+
+	timeout      = time.Minute * 15
+	timeInterval = time.Second * 2
 )
 
 type k8sResource struct {
@@ -99,10 +103,12 @@ func (s *Service) envScaleDown() error {
 		}
 	}
 
+	log.Info("Terminating standalone pods")
 	if err := s.terminateStandalonePods(); err != nil {
-		log.Info("Terminating standalone pods")
 		return fmt.Errorf("terminating standalone pods: %w", err)
 	}
 
 	return nil
 }
+
+func int32Ptr(i int32) *int32 { return &i }
