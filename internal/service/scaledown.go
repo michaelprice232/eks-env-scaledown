@@ -41,8 +41,8 @@ func (s *Service) scaleDownGroup(groupNumber int) error {
 				}
 
 				result.Spec.Replicas = int32Ptr(0)
-				result.Annotations[OriginalReplicasAnnotationKey] = strconv.FormatInt(int64(resource.ReplicaCount), 10)
-				result.Annotations[UpdatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
+				result.Annotations[originalReplicasAnnotationKey] = strconv.FormatInt(int64(resource.ReplicaCount), 10)
+				result.Annotations[updatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
 
 				// RetryOnConflict expects the error to be returned unwrapped
 				// https://pkg.go.dev/k8s.io/client-go/util/retry@v0.33.0#RetryOnConflict
@@ -74,8 +74,8 @@ func (s *Service) scaleDownGroup(groupNumber int) error {
 				}
 
 				result.Spec.Replicas = int32Ptr(0)
-				result.Annotations[OriginalReplicasAnnotationKey] = strconv.FormatInt(int64(resource.ReplicaCount), 10)
-				result.Annotations[UpdatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
+				result.Annotations[originalReplicasAnnotationKey] = strconv.FormatInt(int64(resource.ReplicaCount), 10)
+				result.Annotations[updatedAtAnnotationKey] = time.Now().Format(time.RFC3339)
 
 				// RetryOnConflict expects the error to be returned unwrapped
 				// https://pkg.go.dev/k8s.io/client-go/util/retry@v0.33.0#RetryOnConflict

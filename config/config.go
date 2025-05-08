@@ -4,6 +4,7 @@ import (
 	"fmt"
 	log "log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"k8s.io/client-go/kubernetes"
@@ -21,8 +22,9 @@ const (
 )
 
 type Config struct {
-	K8sClient kubernetes.Interface
-	Action    ScaleAction
+	K8sClient      kubernetes.Interface
+	Action         ScaleAction
+	SuspendCronJob bool
 }
 
 func (c Config) validateAction() error {
@@ -40,7 +42,21 @@ func NewConfig() (Config, error) {
 	conf.Action = ScaleAction(os.Getenv("SCALE_ACTION"))
 	err := conf.validateAction()
 	if err != nil {
-		return conf, fmt.Errorf("valiadting ScaleAction: %w", err)
+		return conf, fmt.Errorf("validating ScaleAction: %w", err)
+	}
+
+	// Whether to disable CronJobs (except the one managing this app) during the scaledown. Default to enable
+	suspendCronJobs := os.Getenv("SUSPEND_CRONJOB")
+	if suspendCronJobs == "" {
+		conf.SuspendCronJob = true
+	} else {
+		suspend, err := strconv.ParseBool(suspendCronJobs)
+		if err != nil {
+			log.Warn("Problem parsing SUSPEND_CRONJOB into a boolean. Defaulting to true")
+			conf.SuspendCronJob = true
+		} else {
+			conf.SuspendCronJob = suspend
+		}
 	}
 
 	kc, err := newK8sClient()

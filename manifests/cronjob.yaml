@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: active-cronjob
+spec:
+  schedule: "0 0 * * *"  # Runs daily at midnight
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: hello
+              image: busybox
+              args:
+                - /bin/sh
+                - -c
+                - echo "Hello from active cronjob"
+          restartPolicy: OnFailure
+  suspend: false
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: suspended-cronjob
+spec:
+  schedule: "0 0 * * *"  # Also scheduled daily at midnight
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: hello
+              image: busybox
+              args:
+                - /bin/sh
+                - -c
+                - echo "Hello from suspended cronjob"
+          restartPolicy: OnFailure
+  suspend: true
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: eks-env-scaledown
+
+  # This label should exclude the Cronjob from being managed
+  labels:
+    app: "eks-env-scaledown"
+
+spec:
+  schedule: "0 0 * * *"  # Also scheduled daily at midnight
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: eks-env-scaledown
+              image: busybox
+              args:
+                - /bin/sh
+                - -c
+                - echo "Hello from eks-env-scaledown"
+          restartPolicy: OnFailure
+  suspend: false
