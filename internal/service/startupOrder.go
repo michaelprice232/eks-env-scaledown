@@ -47,13 +47,13 @@ func (s *Service) buildStartUpOrder() error {
 		if orderKey, found := d.Annotations[startupOrderAnnotationKey]; found {
 			so, err := strconv.Atoi(orderKey)
 			if err != nil {
-				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "deployment", d.Name, "Namespace", d.Namespace, "originalOrder", so, "key", startupOrderAnnotationKey)
+				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "deployment", d.Name, "Namespace", d.Namespace, "originalOrder", orderKey, "key", startupOrderAnnotationKey)
 				orders[defaultStartUpGroup] = append(orders[defaultStartUpGroup], res)
 				continue
 			}
 
-			if so > 99 {
-				log.Warn("startUpOrder number can only be from 0 to 99. Assigning to default group", "deployment", d.Name, "Namespace", d.Namespace, "originalOrder", so)
+			if so < 0 || so >= defaultStartUpGroup {
+				log.Warn("startUpOrder number can only be from 0 to 99. Assigning to default group", "deployment", d.Name, "Namespace", d.Namespace, "originalOrder", so, "defaultGroup", defaultStartUpGroup)
 				orders[defaultStartUpGroup] = append(orders[defaultStartUpGroup], res)
 				continue
 			}
@@ -87,13 +87,13 @@ func (s *Service) buildStartUpOrder() error {
 		if orderKey, found := ss.Annotations[startupOrderAnnotationKey]; found {
 			so, err := strconv.Atoi(orderKey)
 			if err != nil {
-				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "statefulset", ss.Name, "Namespace", ss.Namespace, "originalOrder", so, "key", startupOrderAnnotationKey)
+				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "statefulset", ss.Name, "Namespace", ss.Namespace, "originalOrder", orderKey, "key", startupOrderAnnotationKey)
 				orders[defaultStartUpGroup] = append(orders[defaultStartUpGroup], res)
 				continue
 			}
 
-			if so > 99 {
-				log.Warn("startUpOrder number can only be from 0 to 99. Assigning to default group", "statefulset", ss.Name, "Namespace", ss.Namespace, "originalOrder", so)
+			if so < 0 || so >= defaultStartUpGroup {
+				log.Warn("startUpOrder number can only be from 0 to 99. Assigning to default group", "statefulset", ss.Name, "Namespace", ss.Namespace, "originalOrder", so, "defaultGroup", defaultStartUpGroup)
 				orders[defaultStartUpGroup] = append(orders[defaultStartUpGroup], res)
 				continue
 			}
