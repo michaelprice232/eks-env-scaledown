@@ -60,13 +60,6 @@ func (s *Service) Run() error {
 func (s *Service) envScaleUp() error {
 	log.Info("Scaling environment up")
 
-	if s.conf.SuspendCronJob {
-		log.Info("Enabling all CronJobs except for the ones which manage this app or were previously disabled", "AppLabel", cronJobAppName)
-		if err := s.updateCronJobs(); err != nil {
-			return fmt.Errorf("re-enabling CronJobs: %w", err)
-		}
-	}
-
 	if err := s.buildStartUpOrder(); err != nil {
 		return fmt.Errorf("building startup order: %w", err)
 	}
@@ -83,6 +76,13 @@ func (s *Service) envScaleUp() error {
 		log.Info("Scaling up group", "group", order)
 		if err := s.scaleUpGroup(order); err != nil {
 			return fmt.Errorf("scaling up group %d: %w", order, err)
+		}
+	}
+
+	if s.conf.SuspendCronJob {
+		log.Info("Enabling all CronJobs except for the ones which manage this app or were previously disabled", "AppLabel", cronJobAppName)
+		if err := s.updateCronJobs(); err != nil {
+			return fmt.Errorf("re-enabling CronJobs: %w", err)
 		}
 	}
 

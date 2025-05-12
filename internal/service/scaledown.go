@@ -149,21 +149,15 @@ func (s *Service) terminateStandalonePods() error {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), timeout)
 	defer cancelCtx()
 
-	namespaces, err := s.conf.K8sClient.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	pods, err := s.conf.K8sClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("listing namespaces: %w", err)
+		return fmt.Errorf("listing pods: %w", err)
 	}
-	for _, ns := range namespaces.Items {
-		pods, err := s.conf.K8sClient.CoreV1().Pods(ns.Name).List(ctx, metav1.ListOptions{})
-		if err != nil {
-			return fmt.Errorf("listing pods in Namespace %s: %w", ns.Name, err)
-		}
 
-		for _, pod := range pods.Items {
-			log.Debug("Terminating remaining pod", "pod", pod.Name, "Namespace", pod.Namespace)
-			if err = s.conf.K8sClient.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{}); err != nil {
-				return fmt.Errorf("deleting pod %s in Namespace %s: %w", pod.Name, pod.Namespace, err)
-			}
+	for _, pod := range pods.Items {
+		log.Debug("Terminating remaining pod", "pod", pod.Name, "Namespace", pod.Namespace)
+		if err = s.conf.K8sClient.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{}); err != nil {
+			return fmt.Errorf("deleting pod %s in Namespace %s: %w", pod.Name, pod.Namespace, err)
 		}
 	}
 
