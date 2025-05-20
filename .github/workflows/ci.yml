@@ -1,0 +1,19 @@
+name: CI
+on: push
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone git repo
+        uses: actions/checkout@v4
+
+      # Get the go version from the mod file. Cache modules by default
+      - name: setup-go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Unit tests
+        run: go test ./...
