@@ -36,7 +36,7 @@ func (s *Service) buildStartUpOrder() error {
 			return err
 		}
 
-		res := k8sResource{
+		res := &k8sResource{
 			Name:         d.Name,
 			ResourceType: "deployment",
 			Namespace:    d.Namespace,
@@ -76,7 +76,7 @@ func (s *Service) buildStartUpOrder() error {
 			return err
 		}
 
-		res := k8sResource{
+		res := &k8sResource{
 			Name:         ss.Name,
 			ResourceType: "statefulset",
 			Namespace:    ss.Namespace,

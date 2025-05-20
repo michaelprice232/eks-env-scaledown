@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"k8s.io/apimachinery/pkg/util/wait"
 	log "log/slog"
 	"testing"
 	"time"
@@ -75,6 +76,14 @@ func Test_updateCronJobs(t *testing.T) {
 							},
 						},
 					),
+				},
+
+				// Reduce backoff and retries for simulated failures in unit tests
+				retryBackoff: wait.Backoff{
+					Duration: 10 * time.Millisecond,
+					Factor:   1.0,
+					Jitter:   0.1,
+					Steps:    1,
 				},
 			}
 
