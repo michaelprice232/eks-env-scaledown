@@ -3,6 +3,7 @@
 A Go-based utility to automate the scale-up and scale-down of services in an AWS EKS (Elastic Kubernetes Service) environment. 
 This tool is useful for managing workloads efficiently across environments like staging or development, reducing cloud costs during idle periods.
 When used alongside a tool such as Karpenter, this will enable all the compute/workers to be scaled to zero out of hours.
+Designed to be run as K8s CronJobs to avoid the need for a long-lived controller (and associated compute cost) like with [cluster-turndown](https://github.com/kubecost/cluster-turndown)
 
 ## 🛠 Features
 
@@ -24,7 +25,7 @@ The following environment variables are available:
 | `SLACK_CHANNEL_ID`         | (optional) Target Slack channel ID for notifications. Disabled if not set.                                                     |
 | `ENVIRONMENT`              | (optional) The environment name the script operates against (e.g., `staging`). Only used when Slack notificaitons are enabled. |
 | `NEW_RELIC_ALERT_POLICIES` | (optional) Comma-separated list of New Relic alert policy IDs to disable during environment scale downs. Disabled if not set.  |
-| `NEW_RELIC_API_KEY`        | (optiopnal) API key to use when managing New Relic alerts during scaling. Disabled if not set.                                 |
+| `NEW_RELIC_API_KEY`        | (optionall) API key to use when managing New Relic alerts during scaling. Disabled if not set.                                 |
 
 ```shell
 # Scale cluster down using the "docker-desktop" k8s context
@@ -51,7 +52,8 @@ make cover
 
 ## How Scaling Works
 
-During scale down:
+<details>
+<summary>During scale down:</summary>
 
 1. New Relic alert policies are suspended (if this functionality is enabled via envars)
 2. All CronJobs are suspended
@@ -68,7 +70,11 @@ During scale down:
 6. Terminate any remaining pods, including ones which are not managed by a controller
 7. Any errors are alerting in Slack (if this functionality is enabled via envars)
 
-During scale up:
+
+</details>
+
+<details>
+<summary>During scale up:</summary>
 
 1. For all K8s Deployments and Statefulsets each is placed in a map group number based on the `eks-env-scaledown/startup-order` annotation (if set) e.g. "3". This must be a number from `0` -> `99`.
 2. For any which do not have the annotation set they default to group `100` which is scaled up last
@@ -83,3 +89,5 @@ During scale up:
     - If any have an `app` label equal to `eks-env-scaledown` they are skipped (meant for managing this process)
 5. New Relic alert policies are re-enabled (if this functionality is enabled via envars)
 6. Any errors are alerting in Slack (if this functionality is enabled via envars)
+
+</details>
