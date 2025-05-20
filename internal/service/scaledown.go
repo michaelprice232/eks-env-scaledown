@@ -15,7 +15,7 @@ func (s *Service) scaleDownGroup(groupNumber int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	var resources []k8sResource
+	var resources []*k8sResource
 	var found bool
 	if resources, found = s.startUpOrder[groupNumber]; !found {
 		return fmt.Errorf("scaleDownGroup %d not found in the startUpOrder map", groupNumber)
@@ -25,7 +25,7 @@ func (s *Service) scaleDownGroup(groupNumber int) error {
 		if resource.ResourceType == "deployment" {
 			// Use a retry function to handle conflicts on updates from concurrent changes
 			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
-			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			retryErr := retry.RetryOnConflict(s.retryBackoff, func() error {
 				result, getErr := s.conf.K8sClient.AppsV1().Deployments(resource.Namespace).Get(ctx, resource.Name, metav1.GetOptions{})
 				if getErr != nil {
 					return getErr
@@ -58,7 +58,7 @@ func (s *Service) scaleDownGroup(groupNumber int) error {
 		if resource.ResourceType == "statefulset" {
 			// Use a retry function to handle conflicts on updates from concurrent changes
 			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
-			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			retryErr := retry.RetryOnConflict(s.retryBackoff, func() error {
 				result, getErr := s.conf.K8sClient.AppsV1().StatefulSets(resource.Namespace).Get(ctx, resource.Name, metav1.GetOptions{})
 				if getErr != nil {
 					return getErr
@@ -89,14 +89,16 @@ func (s *Service) scaleDownGroup(groupNumber int) error {
 		}
 	}
 
-	if err := s.waitForPodTermination(resources); err != nil {
-		return fmt.Errorf("waiting for pods to terminate: %w", err)
+	if !s.skipPodWait {
+		if err := s.waitForPodTermination(resources); err != nil {
+			return fmt.Errorf("waiting for pods to terminate: %w", err)
+		}
 	}
 
 	return nil
 }
 
-func (s *Service) waitForPodTermination(resources []k8sResource) error {
+func (s *Service) waitForPodTermination(resources []*k8sResource) error {
 	interval := time.Tick(timeInterval)
 	ctx, cancelCtx := context.WithTimeout(context.Background(), timeout)
 	defer cancelCtx()
@@ -108,10 +110,7 @@ func (s *Service) waitForPodTermination(resources []k8sResource) error {
 				return nil
 			}
 
-			for i := range resources {
-				// If we range over the slice, we are working with copies only, so can't update the podsTerminated correctly
-				r := &resources[i]
-
+			for _, r := range resources {
 				log.Debug("Finding non-terminated pods", "type", r.ResourceType, "resource", r.Name, "Namespace", r.Namespace, "selector", r.Selector)
 
 				pods, err := s.conf.K8sClient.CoreV1().Pods(r.Namespace).List(ctx, metav1.ListOptions{LabelSelector: r.Selector})
@@ -134,7 +133,7 @@ func (s *Service) waitForPodTermination(resources []k8sResource) error {
 	}
 }
 
-func podsStillRunning(resources []k8sResource) bool {
+func podsStillRunning(resources []*k8sResource) bool {
 	var runningPods bool
 	for _, r := range resources {
 		if r.podsTerminated == false {

@@ -14,6 +14,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 )
@@ -75,6 +76,14 @@ func Test_updateCronJobs(t *testing.T) {
 							},
 						},
 					),
+				},
+
+				// Reduce backoff and retries for simulated failures in unit tests
+				retryBackoff: wait.Backoff{
+					Duration: 10 * time.Millisecond,
+					Factor:   1.0,
+					Jitter:   0.1,
+					Steps:    1,
 				},
 			}
 

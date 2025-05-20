@@ -22,7 +22,7 @@ func (s *Service) updateCronJobs() error {
 	}
 
 	for _, cj := range cjs.Items {
-		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		retryErr := retry.RetryOnConflict(s.retryBackoff, func() error {
 			result, getErr := s.conf.K8sClient.BatchV1().CronJobs(cj.Namespace).Get(ctx, cj.Name, metav1.GetOptions{})
 			if getErr != nil {
 				return getErr

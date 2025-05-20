@@ -15,7 +15,7 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	var resources []k8sResource
+	var resources []*k8sResource
 	var found bool
 	if resources, found = s.startUpOrder[groupNumber]; !found {
 		return fmt.Errorf("scaleUpGroup %d not found in the startUpOrder map", groupNumber)
@@ -25,7 +25,7 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 		if resource.ResourceType == "deployment" {
 			// Use a retry function to handle conflicts on updates from concurrent changes
 			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
-			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			retryErr := retry.RetryOnConflict(s.retryBackoff, func() error {
 				result, getErr := s.conf.K8sClient.AppsV1().Deployments(resource.Namespace).Get(ctx, resource.Name, metav1.GetOptions{})
 				if getErr != nil {
 					return fmt.Errorf("getting deployment %s: %w", result.Name, getErr)
@@ -33,7 +33,7 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 
 				replicasRaw, found := result.Annotations[originalReplicasAnnotationKey]
 				if !found {
-					log.Warn("NumReplicas Annotation key not set. The resource might have been created after the scaledown. Skipping", "key", originalReplicasAnnotationKey, "type", resource.ResourceType, "resource", result.Name, "Namespace", result.Namespace)
+					log.Warn("NumReplicas Annotation key not set. The resource might have been created after the scaledown or was already scaled to zero. Skipping", "key", originalReplicasAnnotationKey, "type", resource.ResourceType, "resource", result.Name, "Namespace", result.Namespace)
 					return nil
 				}
 
@@ -61,7 +61,7 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 		if resource.ResourceType == "statefulset" {
 			// Use a retry function to handle conflicts on updates from concurrent changes
 			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
-			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			retryErr := retry.RetryOnConflict(s.retryBackoff, func() error {
 				result, getErr := s.conf.K8sClient.AppsV1().StatefulSets(resource.Namespace).Get(ctx, resource.Name, metav1.GetOptions{})
 				if getErr != nil {
 					return fmt.Errorf("getting statefulset %s: %w", result.Name, getErr)
@@ -69,7 +69,7 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 
 				replicasRaw, found := result.Annotations[originalReplicasAnnotationKey]
 				if !found {
-					log.Warn("NumReplicas Annotation key not set. The resource might have been created after the scaledown. Skipping", "key", originalReplicasAnnotationKey, "type", resource.ResourceType, "resource", result.Name, "Namespace", result.Namespace)
+					log.Warn("NumReplicas Annotation key not set. The resource might have been created after the scaledown or was already scaled to zero. Skipping", "key", originalReplicasAnnotationKey, "type", resource.ResourceType, "resource", result.Name, "Namespace", result.Namespace)
 					return nil
 				}
 
@@ -95,14 +95,16 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 		}
 	}
 
-	if err := s.waitForPodsReady(resources); err != nil {
-		return fmt.Errorf("waiting for pods to be ready: %w", err)
+	if !s.skipPodWait {
+		if err := s.waitForPodsReady(resources); err != nil {
+			return fmt.Errorf("waiting for pods to be ready: %w", err)
+		}
 	}
 
 	return nil
 }
 
-func (s *Service) waitForPodsReady(resources []k8sResource) error {
+func (s *Service) waitForPodsReady(resources []*k8sResource) error {
 	interval := time.Tick(timeInterval)
 	ctx, cancelCtx := context.WithTimeout(context.Background(), timeout)
 	defer cancelCtx()
@@ -114,10 +116,7 @@ func (s *Service) waitForPodsReady(resources []k8sResource) error {
 				return nil
 			}
 
-			for i := range resources {
-				// If we range over the slice, we are working with copies only, so can't update the podsTerminated correctly
-				r := &resources[i]
-
+			for _, r := range resources {
 				if r.ResourceType == "deployment" {
 					log.Debug("Checking if pods are updated and ready", "type", r.ResourceType, "resource", r.Name, "Namespace", r.Namespace)
 					deployment, err := s.conf.K8sClient.AppsV1().Deployments(r.Namespace).Get(ctx, r.Name, metav1.GetOptions{})
@@ -158,7 +157,7 @@ func (s *Service) waitForPodsReady(resources []k8sResource) error {
 	}
 }
 
-func podsUpdatedAndReady(resources []k8sResource) bool {
+func podsUpdatedAndReady(resources []*k8sResource) bool {
 	podsReady := true
 	for _, r := range resources {
 		if r.podsUpdatedAndReady == false {

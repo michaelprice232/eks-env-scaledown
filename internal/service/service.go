@@ -7,6 +7,9 @@ import (
 	"time"
 
 	"github.com/michaelprice232/eks-env-scaledown/config"
+
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -16,8 +19,11 @@ const (
 	cronJobWasDisabledAnnotationKey     = "eks-env-scaledown/cronjob-was-disabled"
 	defaultStartUpGroup             int = 100
 	cronJobAppName                      = "eks-env-scaledown"
-	timeout                             = time.Minute * 15
-	timeInterval                        = time.Second * 2
+)
+
+var (
+	timeout      = time.Minute * 15
+	timeInterval = time.Second * 2
 )
 
 type k8sResource struct {
@@ -30,14 +36,19 @@ type k8sResource struct {
 	podsUpdatedAndReady bool
 }
 
-type startUpOrder map[int][]k8sResource
+type startUpOrder map[int][]*k8sResource
 type Service struct {
 	conf         config.Config
 	startUpOrder startUpOrder
+	retryBackoff wait.Backoff
+	skipPodWait  bool
 }
 
 func NewService(c config.Config) (*Service, error) {
-	return &Service{conf: c}, nil
+	return &Service{
+		conf:         c,
+		retryBackoff: retry.DefaultRetry,
+	}, nil
 }
 
 func (s *Service) Run() error {
