@@ -2,13 +2,14 @@ package service
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/util/retry"
 	log "log/slog"
 	"sort"
 	"time"
 
 	"github.com/michaelprice232/eks-env-scaledown/config"
+
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 )
 
 const (

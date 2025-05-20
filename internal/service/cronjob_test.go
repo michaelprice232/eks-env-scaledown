@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"k8s.io/apimachinery/pkg/util/wait"
 	log "log/slog"
 	"testing"
 	"time"
@@ -15,6 +14,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 )

@@ -3,10 +3,15 @@ package service
 import (
 	"context"
 	"errors"
+	"io"
+	log "log/slog"
+	"testing"
+	"time"
+
 	"github.com/michaelprice232/eks-env-scaledown/config"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,9 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
-	log "log/slog"
-	"testing"
-	"time"
 )
 
 func Test_scaleDownGroup_deployments(t *testing.T) {
