@@ -57,18 +57,18 @@ make cover
 
 1. New Relic alert policies are suspended (if this functionality is enabled via envars)
 2. All CronJobs are suspended
-    - If the CronJob is already suspended then an `eks-env-scaledown/cronjob-was-disabled` is added so it isn't re-enabled at scaleup
+    - If the CronJob is already suspended then an `eks-env-scaledown/cronjob-was-disabled` annotation is added so it isn't re-enabled at scaleup
     - If any have an `app` label equal to `eks-env-scaledown` they are skipped (meant for managing this process)
 3. For all K8s Deployments and Statefulsets each is placed in a map group number based on the `eks-env-scaledown/startup-order` annotation (if set) e.g. "3". This must be a number from `0` -> `99`.
 4. For any which do not have the annotation set they default to group `100` which is scaled down first
 5. Iterates through the groups one at a time (highest to lowest):
-    - If the replica count is already 0 then skips the resource
-    - Reads the annotation `eks-env-scaledown/original-replicas` and sets the desired replica count to match
-    - Removes the `eks-env-scaledown/original-replicas` annotation
-    - Sets an annotation `eks-env-scaledown/updated-at` detailing the current date/time
-    - Waits for all the pods to pass their readiness probes before moving onto the next group
+   - If the replica count is already 0 then skips the resource
+   - Sets the replica count to 0
+   - Sets an annotation `eks-env-scaledown/original-replicas` containing the original number of replicas, used for scale up
+   - Sets an annotation `eks-env-scaledown/updated-at` detailing the current date/time
+   - Waits for all the pods to terminate before moving onto the next group
 6. Terminate any remaining pods, including ones which are not managed by a controller
-7. Any errors are alerting in Slack (if this functionality is enabled via envars)
+7. Any errors are alerted into Slack (if this functionality is enabled via envars)
 
 
 </details>
@@ -79,15 +79,15 @@ make cover
 1. For all K8s Deployments and Statefulsets each is placed in a map group number based on the `eks-env-scaledown/startup-order` annotation (if set) e.g. "3". This must be a number from `0` -> `99`.
 2. For any which do not have the annotation set they default to group `100` which is scaled up last
 3. Iterates through the groups one at a time (lowest to highest):
-    - If the annotation `eks-env-scaledown/original-replicas` is not set skips the resource as either it was created after the scale down operation or the replicas where already set to 0
-    - Sets the replica count to 0
-    - Sets an annotation `eks-env-scaledown/original-replicas` containing the original number of replicas, used for scale up
-    - Sets an annotation `eks-env-scaledown/updated-at` detailing the current date/time
-    - Waits for all the pods to terminate before moving onto the next group
+   - If the annotation `eks-env-scaledown/original-replicas` is not set skips the resource as it was either created after the scaledown or was already at zero replicas 
+   - Reads the annotation `eks-env-scaledown/original-replicas` and sets the desired replica count to match
+   - Removes the `eks-env-scaledown/original-replicas` annotation
+   - Sets an annotation `eks-env-scaledown/updated-at` detailing the current date/time
+   - Waits for all the pods to pass their readiness probes before moving onto the next group
 4. All CronJobs are re-enabled
     - If the CronJob has an `eks-env-scaledown/cronjob-was-disabled` annotation it is skipped as it was disabled prior to scale down
     - If any have an `app` label equal to `eks-env-scaledown` they are skipped (meant for managing this process)
 5. New Relic alert policies are re-enabled (if this functionality is enabled via envars)
-6. Any errors are alerting in Slack (if this functionality is enabled via envars)
+6. Any errors are alerted into Slack (if this functionality is enabled via envars)
 
 </details>
