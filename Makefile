@@ -12,3 +12,6 @@ scale-up:
 
 scale-down:
 	SCALE_ACTION=ScaleDown KUBE_CONTEXT=$(KUBE_CONTEXT) go run cmd/main.go
+
+build-docker:
+	docker buildx build --platform linux/amd64,linux/arm64 -t eks-env-scaledown .
