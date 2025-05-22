@@ -257,6 +257,41 @@ func Test_terminateStandalonePods(t *testing.T) {
 	assert.Equal(t, 0, len(result.Items), "Expected 0 pods after the termination")
 }
 
+func Test_terminateStandalonePods_with_ignore_pod(t *testing.T) {
+	s := &Service{
+		conf: config.Config{
+			K8sClient: fake.NewClientset(
+				&v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ignore-pod",
+						Namespace: "app1",
+						Labels: map[string]string{
+							"app": cronJobAppName,
+						},
+					},
+				},
+				&v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-2",
+						Namespace: "database",
+					},
+				},
+			),
+		},
+	}
+
+	result, err := s.conf.K8sClient.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(result.Items), "Expected 2 pods before the termination")
+
+	err = s.terminateStandalonePods()
+	assert.NoError(t, err)
+
+	result, err = s.conf.K8sClient.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(result.Items), "Expected 1 pod after the termination as 1 pod is ignored due to the app label")
+}
+
 func Test_podsStillRunning(t *testing.T) {
 	tests := []struct {
 		name            string

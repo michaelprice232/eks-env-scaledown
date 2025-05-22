@@ -154,6 +154,11 @@ func (s *Service) terminateStandalonePods() error {
 	}
 
 	for _, pod := range pods.Items {
+		if appLabel, found := pod.Labels["app"]; found && appLabel == cronJobAppName {
+			log.Debug("Pod has matching app label and so is likely running this app, skipping", "appLabel", cronJobAppName)
+			continue
+		}
+
 		log.Debug("Terminating remaining pod", "pod", pod.Name, "Namespace", pod.Namespace)
 		if err = s.conf.K8sClient.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{}); err != nil {
 			return fmt.Errorf("deleting pod %s in Namespace %s: %w", pod.Name, pod.Namespace, err)

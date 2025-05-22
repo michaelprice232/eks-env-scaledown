@@ -1,0 +1,58 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: eks-env-scaledown-down
+  namespace: eks-env-scaledown
+  labels:
+    app: "eks-env-scaledown" # This label excludes the Cronjob from being managed during CronJob suspending
+    scale-type: ScaleDown
+spec:
+  schedule: "0 0 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: "eks-env-scaledown" # This label excludes the target job/pod from being terminated by the terminateStandalonePods method
+        spec:
+          serviceAccountName: eks-env-scaledown
+          restartPolicy: OnFailure
+          containers:
+            - name: app
+              image: eks-env-scaledown:latest
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: SCALE_ACTION
+                  value: ScaleDown
+
+                # The rest are optional
+                - name: LOG_LEVEL
+                  value: info
+
+                - name: NEW_RELIC_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: newrelic
+                      key: api-key
+
+                - name: NEW_RELIC_ALERT_POLICIES
+                  valueFrom:
+                    secretKeyRef:
+                      name: newrelic
+                      key: policies
+
+                - name: SLACK_API_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: slack
+                      key: api-key
+
+                - name: SLACK_CHANNEL_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: slack
+                      key: channelid
+
+                - name: ENVIRONMENT
+                  value: staging
