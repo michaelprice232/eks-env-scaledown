@@ -16,6 +16,7 @@ type NewRelicClient struct {
 	PolicyIDs []int
 }
 
+// NewNewRelicClient returns NewRelicClient, which can be used for enabling and disabling New Relic alert policies.
 func NewNewRelicClient() (*NewRelicClient, error) {
 	apiKey := os.Getenv("NEW_RELIC_API_KEY")
 	if apiKey == "" {
@@ -72,7 +73,12 @@ func (sa ScaleAction) validateAction() error {
 	}
 }
 
+// UpdateNewRelicAlertPolicy disables or enables New Relic alert policies.
 func UpdateNewRelicAlertPolicy(nrClient *NewRelicClient, action ScaleAction) error {
+	if nrClient == nil {
+		return nil
+	}
+
 	if err := action.validateAction(); err != nil {
 		return err
 	}

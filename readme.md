@@ -12,25 +12,26 @@ Designed to be run as K8s CronJobs to avoid the need for a long-lived controller
 - Suspend CronJobs whilst the environment is scaled down to avoid the need to customise cron schedules
 - Termination of lingering/standalone pods at the end of the scale down to maximize worker node (and cost) reduction
 - Slack integration to notify of any problems 
-- New Relic integration to enable disabling of alerts 
+- New Relic integration to allow disabling of alerts 
 
 
 ## Running Locally
 
 The following environment variables are available:
 
-| Environment Variable       | Purpose                                                                                                                        |
-|----------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| `SCALE_ACTION`             | Defines whether to scale resources up or down (can be `ScaleUp` or `ScaleDown`).                                               |
-| `KUBE_CONTEXT`             | (optional) If running locally this specifies the Kubernetes context to operate in (e.g., `docker-desktop`).                    |
-| `LOG_LEVEL`                | (optional) Sets the logging verbosity level (e.g., `info`, `debug`). Defaults to info.                                         |
-| `SUSPEND_CRONJOB`          | (optional) Whether to suspend CronJobs during scale down and then enable after scale up. Defaults to true.                     |
-| `SLACK_API_TOKEN`          | (optional) API token used to send scaling failure messages to Slack. Disabled if not set.                                      |
-| `SLACK_CHANNEL_ID`         | (optional) Target Slack channel ID for notifications. Disabled if not set.                                                     |
-| `ENVIRONMENT`              | (optional) The environment name the script operates against (e.g., `staging`). Only used when Slack notificaitons are enabled. |
-| `NEW_RELIC_ALERT_POLICIES` | (optional) Comma-separated list of New Relic alert policy IDs to disable during environment scale downs. Disabled if not set.  |
-| `NEW_RELIC_API_KEY`        | (optional) API key to use when managing New Relic alerts during scaling. Disabled if not set.                                  |
-| `NEW_RELIC_REGION`         | (optional) New Relic region to use. Defaults to `eu`.                                                                          |
+| Environment Variable       | Purpose                                                                                                                                |
+|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| `SCALE_ACTION`             | Defines whether to scale resources up or down (can be `ScaleUp` or `ScaleDown`).                                                       |
+| `KUBE_CONTEXT`             | (optional) If running locally this specifies the Kubernetes context to operate in (e.g., `docker-desktop`).                            |
+| `LOG_LEVEL`                | (optional) Sets the logging verbosity level (e.g., `info`, `debug`). Defaults to info.                                                 |
+| `SUSPEND_CRONJOB`          | (optional) Whether to suspend CronJobs during scale down and then enable after scale up. Defaults to true.                             |
+| `SLACK_API_TOKEN`          | (optional) API token used to send scaling failure messages to Slack. Disabled if not set.                                              |
+| `SLACK_CHANNEL_ID`         | (optional) Target Slack channel ID for notifications. Disabled if not set.                                                             |
+| `ENVIRONMENT`              | (optional) The environment name the script operates against (e.g., `staging`). Only used when Slack notifications are enabled.         |
+| `NEW_RELIC_ALERT_POLICIES` | (optional) Comma-separated list of New Relic alert policy IDs to disable during environment scale downs. Disabled if not set.          |
+| `NEW_RELIC_API_KEY`        | (optional) API key to use when managing New Relic alerts during scaling. Disabled if not set.                                          |
+| `NEW_RELIC_REGION`         | (optional) New Relic region to use. Defaults to `eu`.                                                                                  |
+| `MANAGE_CLOUDWATCH_ALARMS` | (optional) Disable all Cloudwatch alarms in the AWS account during scale down. Disabled if not set. Set to non-empty string to enable. |
 
 ```shell
 # Scale cluster down using the "docker-desktop" k8s context
