@@ -17,48 +17,50 @@ func main() {
 
 	nrClient, err := notify.NewNewRelicClient()
 	if err != nil {
-		log.Error("creating New Relic client", "error", err)
-		notify.Slack(slackClient, fmt.Sprintf("error whilst creating New Relic client: %v", err))
-		os.Exit(1)
+		reportError(slackClient, err, "creating New Relic client")
 	}
 
 	c, err := config.NewConfig()
 	if err != nil {
-		log.Error("creating config", "error", err)
-		notify.Slack(slackClient, fmt.Sprintf("error whilst creating config: %v", err))
-		os.Exit(2)
+		reportError(slackClient, err, "creating config")
 	}
 
-	// Disable the New Relic alert policy if config has been set
-	if nrClient != nil && c.Action == config.ScaleDown {
+	if c.Action == config.ScaleDown {
+		err = notify.UpdateCloudwatchAlarms("disable")
+		if err != nil {
+			reportError(slackClient, err, "disabling Cloudwatch alarms")
+		}
+
 		err = notify.UpdateNewRelicAlertPolicy(nrClient, notify.ScaleDown)
 		if err != nil {
-			log.Error("updating New Relic", "error", err)
-			notify.Slack(slackClient, fmt.Sprintf("error whilst updating New Relic: %v", err))
-			os.Exit(3)
+			reportError(slackClient, err, "updating New Relic")
 		}
 	}
 
 	s, err := service.NewService(c)
 	if err != nil {
-		log.Error("creating service", "error", err)
-		notify.Slack(slackClient, fmt.Sprintf("error whilst creating service: %v", err))
-		os.Exit(4)
+		reportError(slackClient, err, "creating service")
 	}
 
 	if err = s.Run(); err != nil {
-		log.Error("running", "error", err)
-		notify.Slack(slackClient, fmt.Sprintf("error whilst running: %v", err))
-		os.Exit(5)
+		reportError(slackClient, err, "running")
 	}
 
-	// Re-enable the New Relic alert policy if config has been set
-	if nrClient != nil && c.Action == config.ScaleUp {
+	if c.Action == config.ScaleUp {
+		err = notify.UpdateCloudwatchAlarms("enable")
+		if err != nil {
+			reportError(slackClient, err, "enabling Cloudwatch alarms")
+		}
+
 		err = notify.UpdateNewRelicAlertPolicy(nrClient, notify.ScaleUp)
 		if err != nil {
-			log.Error("updating New Relic", "error", err)
-			notify.Slack(slackClient, fmt.Sprintf("error whilst updating New Relic: %v", err))
-			os.Exit(6)
+			reportError(slackClient, err, "updating New Relic")
 		}
 	}
+}
+
+func reportError(slackClient *notify.SlackClient, err error, message string) {
+	log.Error(message, "error", err)
+	notify.Slack(slackClient, fmt.Sprintf("error whilst %s: %v", message, err))
+	os.Exit(1)
 }

@@ -14,6 +14,7 @@ type SlackClient struct {
 	ScaleAction string
 }
 
+// NewSlackClient returns SlackClient, which can be used for sending messages to Slack channels.
 func NewSlackClient() *SlackClient {
 	slackAPIToken := os.Getenv("SLACK_API_TOKEN")
 	slackChannelID := os.Getenv("SLACK_CHANNEL_ID")
@@ -65,10 +66,12 @@ func PostMessage(slackClient *SlackClient, message string) error {
 }
 
 func Slack(slackClient *SlackClient, msg string) {
-	if slackClient != nil {
-		slackErr := PostMessage(slackClient, msg)
-		if slackErr != nil {
-			log.Error("sending Slack message", "error", slackErr)
-		}
+	if slackClient == nil {
+		return
+	}
+
+	slackErr := PostMessage(slackClient, msg)
+	if slackErr != nil {
+		log.Error("sending Slack message", "error", slackErr)
 	}
 }
