@@ -35,9 +35,9 @@ jobs:
       contents: read
 
     env:
-      AWS_ACCOUNT_ID: "077439031059"
+      AWS_ACCOUNT_ID: "633681147894"
       AWS_REGION: eu-west-2
-      IAM_ROLE: GithubActionsECRAndBuildArtefacts
+      IAM_ROLE: "github-actions-oidc"
       ECR_REPOSITORY: eks-env-scaledown
 
     steps:
