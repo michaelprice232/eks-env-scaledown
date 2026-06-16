@@ -1,3 +1,5 @@
+// Package service implements the core logic for scaling Kubernetes workloads
+// up and down, including ordering, CronJob suspension and Keda integration.
 package service
 
 import (
@@ -17,9 +19,13 @@ const (
 	originalReplicasAnnotationKey       = "eks-env-scaledown/original-replicas"
 	updatedAtAnnotationKey              = "eks-env-scaledown/updated-at"
 	cronJobWasDisabledAnnotationKey     = "eks-env-scaledown/cronjob-was-disabled"
+	cronJobWasDisabledValue             = "yes"
 	kedaPausedKey                       = "autoscaling.keda.sh/paused"
 	defaultStartUpGroup             int = 100
 	cronJobAppName                      = "eks-env-scaledown"
+
+	resourceTypeDeployment  = "deployment"
+	resourceTypeStatefulSet = "statefulset"
 )
 
 var (
@@ -38,6 +44,8 @@ type k8sResource struct {
 }
 
 type startUpOrder map[int][]*k8sResource
+
+// Service coordinates scaling the environment up or down based on the supplied config.
 type Service struct {
 	conf         config.Config
 	startUpOrder startUpOrder
@@ -45,6 +53,7 @@ type Service struct {
 	skipPodWait  bool
 }
 
+// NewService returns a Service configured with the supplied config.
 func NewService(c config.Config) (*Service, error) {
 	return &Service{
 		conf:         c,
@@ -52,6 +61,7 @@ func NewService(c config.Config) (*Service, error) {
 	}, nil
 }
 
+// Run scales the environment up or down depending on the configured ScaleAction.
 func (s *Service) Run() error {
 	switch s.conf.Action {
 	case config.ScaleUp:
@@ -81,7 +91,7 @@ func (s *Service) envScaleUp() error {
 		scaleOrder = append(scaleOrder, order)
 	}
 
-	sort.Sort(sort.IntSlice(scaleOrder))
+	sort.Ints(scaleOrder)
 	log.Debug("Scale up order", "order", scaleOrder)
 
 	for _, order := range scaleOrder {

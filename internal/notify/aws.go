@@ -1,3 +1,5 @@
+// Package notify provides integrations for managing alerting (CloudWatch, New Relic)
+// and sending notifications (Slack) during environment scaling.
 package notify
 
 import (

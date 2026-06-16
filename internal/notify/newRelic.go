@@ -11,6 +11,7 @@ import (
 	"github.com/newrelic/newrelic-client-go/v2/pkg/alerts"
 )
 
+// NewRelicClient wraps the New Relic alerts client and the alert policy IDs to manage.
 type NewRelicClient struct {
 	Client    *alerts.Alerts
 	PolicyIDs []int
@@ -36,14 +37,14 @@ func NewNewRelicClient() (*NewRelicClient, error) {
 	}
 
 	idsSplit := strings.Split(ids, ",")
-	policyIds := make([]int, 0, len(idsSplit))
+	policyIDs := make([]int, 0, len(idsSplit))
 
 	for _, policy := range idsSplit {
 		policy64, err := strconv.ParseInt(policy, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse New Relic alert policy ID %s into an int", policy)
 		}
-		policyIds = append(policyIds, int(policy64))
+		policyIDs = append(policyIDs, int(policy64))
 	}
 
 	client, err := newrelic.New(newrelic.ConfigPersonalAPIKey(apiKey), newrelic.ConfigRegion(newRelicRegion))
@@ -53,14 +54,17 @@ func NewNewRelicClient() (*NewRelicClient, error) {
 
 	return &NewRelicClient{
 		Client:    &client.Alerts,
-		PolicyIDs: policyIds,
+		PolicyIDs: policyIDs,
 	}, nil
 }
 
+// ScaleAction defines whether New Relic alert policies should be enabled or disabled.
 type ScaleAction string
 
 const (
-	ScaleUp   ScaleAction = "ScaleUp"
+	// ScaleUp re-enables the configured New Relic alert policies.
+	ScaleUp ScaleAction = "ScaleUp"
+	// ScaleDown disables the configured New Relic alert policies.
 	ScaleDown ScaleAction = "ScaleDown"
 )
 

@@ -87,7 +87,6 @@ func Test_BuildStartUpOrder_Deployments(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-
 			var annotations map[string]string
 			if tc.orderAnnotation != "" {
 				annotations = map[string]string{
@@ -116,7 +115,7 @@ func Test_BuildStartUpOrder_Deployments(t *testing.T) {
 			// Simulate server side error
 			if tc.name == "K8s Server Error" {
 				k8sFakeClient := s.conf.K8sClient.(*fake.Clientset)
-				k8sFakeClient.Fake.PrependReactor("list", "deployments", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+				k8sFakeClient.PrependReactor("list", "deployments", func(_ k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, errors.New("server side error")
 				})
 			}
@@ -138,7 +137,6 @@ func Test_BuildStartUpOrder_Deployments(t *testing.T) {
 					assert.Equal(t, fmt.Sprintf("app=%s", tc.appSelector), s.startUpOrder[tc.expectedOrder][0].Selector)
 				}
 			}
-
 		})
 	}
 }
@@ -213,7 +211,6 @@ func Test_BuildStartUpOrder_Statefulsets(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-
 			var annotations map[string]string
 			if tc.orderAnnotation != "" {
 				annotations = map[string]string{
@@ -242,7 +239,7 @@ func Test_BuildStartUpOrder_Statefulsets(t *testing.T) {
 			// Simulate server side error
 			if tc.name == "K8s Server Error" {
 				k8sFakeClient := s.conf.K8sClient.(*fake.Clientset)
-				k8sFakeClient.Fake.PrependReactor("list", "statefulsets", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+				k8sFakeClient.PrependReactor("list", "statefulsets", func(_ k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, errors.New("server side error")
 				})
 			}
@@ -264,7 +261,6 @@ func Test_BuildStartUpOrder_Statefulsets(t *testing.T) {
 					assert.Equal(t, fmt.Sprintf("app=%s", tc.appSelector), s.startUpOrder[tc.expectedOrder][0].Selector)
 				}
 			}
-
 		})
 	}
 }

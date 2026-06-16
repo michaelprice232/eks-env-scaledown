@@ -1,3 +1,5 @@
+// Command eks-env-scaledown scales a Kubernetes environment up or down and
+// manages the associated alerting integrations.
 package main
 
 import (

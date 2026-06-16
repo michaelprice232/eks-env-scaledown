@@ -3,6 +3,9 @@ KUBE_CONTEXT ?= docker-desktop
 test:
 	go test -v ./...
 
+lint:
+	golangci-lint run ./...
+
 cover:
 	go test -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out

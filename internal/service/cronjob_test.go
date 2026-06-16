@@ -44,7 +44,6 @@ func Test_updateCronJobs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-
 			var labels map[string]string
 			if tc.appLabel != "" {
 				labels = map[string]string{
@@ -90,7 +89,7 @@ func Test_updateCronJobs(t *testing.T) {
 			// Simulate server side error
 			if tc.name == "K8s Server Error" {
 				k8sFakeClient := s.conf.K8sClient.(*fake.Clientset)
-				k8sFakeClient.Fake.PrependReactor("update", "cronjobs", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+				k8sFakeClient.PrependReactor("update", "cronjobs", func(_ k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, errors.New("server side error")
 				})
 			}

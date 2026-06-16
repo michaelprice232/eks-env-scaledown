@@ -6,11 +6,19 @@ import (
 
 	"github.com/michaelprice232/eks-env-scaledown/config"
 
+	log "log/slog"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/util/retry"
-	log "log/slog"
+)
+
+const (
+	kedaGroup       = "keda.sh"
+	kedaVersion     = "v1alpha1"
+	kedaResource    = "scaledobjects"
+	kedaPausedValue = "true"
 )
 
 func (s *Service) updateKedaScaleObjects(sa config.ScaleAction) error {
@@ -22,9 +30,9 @@ func (s *Service) updateKedaScaleObjects(sa config.ScaleAction) error {
 	defer cancel()
 
 	gvr := schema.GroupVersionResource{
-		Group:    "keda.sh",
-		Version:  "v1alpha1",
-		Resource: "scaledobjects",
+		Group:    kedaGroup,
+		Version:  kedaVersion,
+		Resource: kedaResource,
 	}
 
 	scaledobjects, err := s.conf.K8sDynamicClient.Resource(gvr).Namespace("").List(ctx, metav1.ListOptions{})
@@ -40,19 +48,19 @@ func (s *Service) updateKedaScaleObjects(sa config.ScaleAction) error {
 			// Get the latest version of the ScaledObject
 			latest, getErr := s.conf.K8sDynamicClient.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 			if getErr != nil {
-				return fmt.Errorf("failed to get latest version of ScaledObject %s/%s: %v", namespace, name, getErr)
+				return fmt.Errorf("failed to get latest version of ScaledObject %s/%s: %w", namespace, name, getErr)
 			}
 
 			annotations, found, err := unstructured.NestedStringMap(latest.Object, "metadata", "annotations")
 			if err != nil {
-				return fmt.Errorf("failed to get annotations for ScaledObject %s/%s: %v", namespace, name, err)
+				return fmt.Errorf("failed to get annotations for ScaledObject %s/%s: %w", namespace, name, err)
 			}
 
 			if sa == config.ScaleDown {
 				if found {
-					annotations[kedaPausedKey] = "true"
+					annotations[kedaPausedKey] = kedaPausedValue
 				} else {
-					annotations = map[string]string{kedaPausedKey: "true"}
+					annotations = map[string]string{kedaPausedKey: kedaPausedValue}
 				}
 			}
 
@@ -62,7 +70,7 @@ func (s *Service) updateKedaScaleObjects(sa config.ScaleAction) error {
 
 			err = unstructured.SetNestedStringMap(latest.Object, annotations, "metadata", "annotations")
 			if err != nil {
-				return fmt.Errorf("failed to set annotations for ScaledObject %s/%s: %v", namespace, name, err)
+				return fmt.Errorf("failed to set annotations for ScaledObject %s/%s: %w", namespace, name, err)
 			}
 
 			// Attempt to update and retry on conflict
@@ -70,7 +78,7 @@ func (s *Service) updateKedaScaleObjects(sa config.ScaleAction) error {
 			return updateErr
 		})
 		if retryErr != nil {
-			return fmt.Errorf("failed to update ScaledObject %s/%s: %v\n", namespace, name, retryErr)
+			return fmt.Errorf("failed to update ScaledObject %s/%s: %w", namespace, name, retryErr)
 		}
 
 		log.Debug("Annotated pod", "namespace", namespace, "name", name)

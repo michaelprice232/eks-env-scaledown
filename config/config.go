@@ -1,3 +1,5 @@
+// Package config loads runtime configuration from environment variables and
+// builds the Kubernetes clients used by the rest of the application.
 package config
 
 import (
@@ -7,21 +9,26 @@ import (
 	"strconv"
 	"strings"
 
+	"path/filepath"
+
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"path/filepath"
 )
 
+// ScaleAction defines whether the environment should be scaled up or down.
 type ScaleAction string
 
 const (
-	ScaleUp   ScaleAction = "ScaleUp"
+	// ScaleUp restores workloads to their previous replica counts.
+	ScaleUp ScaleAction = "ScaleUp"
+	// ScaleDown scales workloads to zero replicas.
 	ScaleDown ScaleAction = "ScaleDown"
 )
 
+// Config holds the runtime configuration and Kubernetes clients for the application.
 type Config struct {
 	K8sClient        kubernetes.Interface
 	K8sDynamicClient dynamic.Interface
@@ -39,6 +46,7 @@ func (c Config) validateAction() error {
 	}
 }
 
+// NewConfig builds a Config from environment variables and initialises the Kubernetes clients.
 func NewConfig() (Config, error) {
 	var conf Config
 
@@ -86,6 +94,7 @@ func NewConfig() (Config, error) {
 	return conf, nil
 }
 
+// SetupLogging configures the default structured logger using the LOG_LEVEL environment variable.
 func SetupLogging() {
 	logLevelStr := strings.ToLower(os.Getenv("LOG_LEVEL"))
 	var level log.Level

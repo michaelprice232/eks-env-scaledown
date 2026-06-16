@@ -41,7 +41,6 @@ func Test_scaleUpGroup_deployments(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-
 			var annotations map[string]string
 			if tc.replicasAnnotationKey != "" {
 				annotations = map[string]string{
@@ -86,7 +85,7 @@ func Test_scaleUpGroup_deployments(t *testing.T) {
 			// Simulate server side error
 			if tc.name == "K8s Server Error" {
 				k8sFakeClient := s.conf.K8sClient.(*fake.Clientset)
-				k8sFakeClient.Fake.PrependReactor("get", "deployments", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+				k8sFakeClient.PrependReactor("get", "deployments", func(_ k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, errors.New("server side error")
 				})
 			}
@@ -147,7 +146,6 @@ func Test_scaleUpGroup_statefulsets(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-
 			var annotations map[string]string
 			if tc.replicasAnnotationKey != "" {
 				annotations = map[string]string{
@@ -192,7 +190,7 @@ func Test_scaleUpGroup_statefulsets(t *testing.T) {
 			// Simulate server side error
 			if tc.name == "K8s Server Error" {
 				k8sFakeClient := s.conf.K8sClient.(*fake.Clientset)
-				k8sFakeClient.Fake.PrependReactor("get", "statefulsets", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+				k8sFakeClient.PrependReactor("get", "statefulsets", func(_ k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, errors.New("server side error")
 				})
 			}

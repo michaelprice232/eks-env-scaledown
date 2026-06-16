@@ -1,6 +1,6 @@
 # Cross compilation multi-architecture build
 # https://docs.docker.com/build/building/multi-platform/#cross-compiling-a-go-application
-FROM --platform=$BUILDPLATFORM golang:1.24 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26 AS builder
 
 # These are made available when using the --platform docker build parameter, along with BUILDPLATFORM
 ARG TARGETOS
