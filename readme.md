@@ -59,6 +59,19 @@ make test
 make cover
 ```
 
+## CI & Releases
+
+CI runs via GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)) on every branch push:
+
+1. **Test & lint** - runs the unit tests and `golangci-lint`.
+2. **Version** - on feature branches the long git SHA is used as the image tag. On `main` (only ever
+   updated via a PR merge) the next [semantic version](https://semver.org/) is calculated automatically
+   from the [Conventional Commits](https://www.conventionalcommits.org/) since the last tag
+   (`feat` -> minor, `fix` -> patch, a breaking change -> major, anything else -> patch) and the new git
+   tag is pushed.
+3. **Build & push** - the multi-arch (`amd64`/`arm64`) Docker image is built and pushed to ECR, tagged
+   with the semver on `main` or the git SHA on other branches. AWS authentication uses an OIDC IAM role.
+
 ## Startup/Shutdown ordering
 
 You can define a startup order to `Deployments` and `Statefulsets` which will determine the startup order (lowest -> highest)

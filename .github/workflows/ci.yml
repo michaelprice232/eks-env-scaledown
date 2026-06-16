@@ -1,5 +1,18 @@
+# CI pipeline. Runs on every branch push (not on tags):
+#   1. test-and-lint        - run the unit tests and golangci-lint.
+#   2. version              - decide the image tag. On main (only ever updated via a PR merge) the
+#                             next semver is calculated from the conventional commits since the last
+#                             tag (feat -> minor, fix -> patch, breaking -> major, otherwise patch)
+#                             and that git tag is pushed. On any other branch the long git SHA is used.
+#   3. build-and-push-image - build the multi-arch (amd64/arm64) image and push it to ECR, tagged with
+#                             the semver on main or the git SHA on other branches.
 name: CI
-on: push
+
+on:
+  push:
+    # All branches, but not tags — stops the auto-pushed semver tag from re-triggering this workflow
+    branches:
+      - '**'
 
 jobs:
   test-and-lint:
@@ -23,10 +36,44 @@ jobs:
         with:
           version: v2.12.2
 
-  build-and-push-image:
-    # Publish only from main, and only once tests + lint have passed
+  version:
     needs: test-and-lint
-    #if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    # Required to push the git tag (main only)
+    permissions:
+      contents: write
+
+    outputs:
+      image_tag: ${{ steps.image-tag.outputs.image_tag }}
+
+    steps:
+      - name: Clone git repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history + tags so the next semver can be calculated
+
+      # On main, derive the next semver from the conventional commits since the last tag and push it
+      - name: Calculate and push semver tag
+        id: semver
+        if: github.ref == 'refs/heads/main'
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: patch
+
+      # main -> the new semver tag, every other branch -> the long git SHA
+      - name: Determine image tag
+        id: image-tag
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "image_tag=${{ steps.semver.outputs.new_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image_tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-and-push-image:
+    needs: version
     runs-on: ubuntu-latest
 
     # Required for OIDC federation with AWS
@@ -66,4 +113,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          tags: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ needs.version.outputs.image_tag }}
