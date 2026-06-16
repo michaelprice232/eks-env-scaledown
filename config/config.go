@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -22,9 +23,11 @@ const (
 )
 
 type Config struct {
-	K8sClient      kubernetes.Interface
-	Action         ScaleAction
-	SuspendCronJob bool
+	K8sClient        kubernetes.Interface
+	K8sDynamicClient dynamic.Interface
+	Action           ScaleAction
+	SuspendCronJob   bool
+	SuspendKeda      bool
 }
 
 func (c Config) validateAction() error {
@@ -59,11 +62,26 @@ func NewConfig() (Config, error) {
 		}
 	}
 
-	kc, err := newK8sClient()
+	// Whether to disable Keda ScaledObjects during the scaledown. Default to disabled
+	suspendKedaSO := os.Getenv("SUSPEND_KEDA_SCALED_OBJECTS")
+	if suspendKedaSO == "" {
+		conf.SuspendKeda = false
+	} else {
+		suspend, err := strconv.ParseBool(suspendKedaSO)
+		if err != nil {
+			log.Warn("Problem parsing SUSPEND_KEDA_SCALED_OBJECTS into a boolean. Defaulting to false")
+			conf.SuspendKeda = false
+		} else {
+			conf.SuspendKeda = suspend
+		}
+	}
+
+	kc, dc, err := newK8sClients()
 	if err != nil {
-		return conf, fmt.Errorf("creating k8s client: %w", err)
+		return conf, fmt.Errorf("creating k8s clients: %w", err)
 	}
 	conf.K8sClient = kc
+	conf.K8sDynamicClient = dc
 
 	return conf, nil
 }
@@ -90,7 +108,7 @@ func SetupLogging() {
 	log.SetDefault(log.New(handler))
 }
 
-func newK8sClient() (*kubernetes.Clientset, error) {
+func newK8sClients() (*kubernetes.Clientset, *dynamic.DynamicClient, error) {
 	var client *kubernetes.Clientset
 	var config *rest.Config
 	var err error
@@ -105,19 +123,24 @@ func newK8sClient() (*kubernetes.Clientset, error) {
 		clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
 		config, err = clientConfig.ClientConfig()
 		if err != nil {
-			return nil, fmt.Errorf("building K8s client config from the local host: %w", err)
+			return nil, nil, fmt.Errorf("building K8s client config from the local host: %w", err)
 		}
 	} else {
 		config, err = rest.InClusterConfig()
 		if err != nil {
-			return nil, fmt.Errorf("building K8s client config from the cluster: %w", err)
+			return nil, nil, fmt.Errorf("building K8s client config from the cluster: %w", err)
 		}
 	}
 
 	client, err = kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("creating K8s client: %w", err)
+		return nil, nil, fmt.Errorf("creating K8s client: %w", err)
 	}
 
-	return client, nil
+	dynClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating K8s dynamic client: %w", err)
+	}
+
+	return client, dynClient, nil
 }

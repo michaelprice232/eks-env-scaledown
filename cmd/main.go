@@ -4,11 +4,14 @@ import (
 	"fmt"
 	log "log/slog"
 	"os"
+	"time"
 
 	"github.com/michaelprice232/eks-env-scaledown/config"
 	"github.com/michaelprice232/eks-env-scaledown/internal/notify"
 	"github.com/michaelprice232/eks-env-scaledown/internal/service"
 )
+
+const alertEnableDelay = time.Minute * 10
 
 func main() {
 	config.SetupLogging()
@@ -47,6 +50,10 @@ func main() {
 	}
 
 	if c.Action == config.ScaleUp {
+		// Delay re-enabling alerts to allow the services to stabilize first
+		log.Info("Waiting for services to stabilize before enabling alerts", "delay", alertEnableDelay)
+		time.Sleep(alertEnableDelay)
+
 		err = notify.UpdateCloudwatchAlarms("enable")
 		if err != nil {
 			reportError(slackClient, err, "enabling Cloudwatch alarms")

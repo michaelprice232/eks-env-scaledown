@@ -10,28 +10,31 @@ Designed to be run as K8s CronJobs to avoid the need for a long-lived controller
 - Scale up/down Kubernetes Deployments and StatefulSets to allow Karpenter to scale the worker nodes to zero
 - Maintain user-defined startup/shutdown ordering for workload dependencies to avoid log/tracing noise
 - Suspend CronJobs whilst the environment is scaled down to avoid the need to customise cron schedules
+- Pause Keda ScaledObject's whilst the environment is scaled down to avoid workloads being scaled back up
 - Termination of lingering/standalone pods at the end of the scale down to maximize worker node (and cost) reduction
 - Slack integration to notify of any problems 
-- New Relic integration to allow disabling of alerts 
+- New Relic integration to allow disabling of alerts during scale down
+- AWS CloudWatch integration to disable all alarms during scale down
 
 
 ## Running Locally
 
 The following environment variables are available:
 
-| Environment Variable       | Purpose                                                                                                                                |
-|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| `SCALE_ACTION`             | Defines whether to scale resources up or down (can be `ScaleUp` or `ScaleDown`).                                                       |
-| `KUBE_CONTEXT`             | (optional) If running locally this specifies the Kubernetes context to operate in (e.g., `docker-desktop`).                            |
-| `LOG_LEVEL`                | (optional) Sets the logging verbosity level (e.g., `info`, `debug`). Defaults to info.                                                 |
-| `SUSPEND_CRONJOB`          | (optional) Whether to suspend CronJobs during scale down and then enable after scale up. Defaults to true.                             |
-| `SLACK_API_TOKEN`          | (optional) API token used to send scaling failure messages to Slack. Disabled if not set.                                              |
-| `SLACK_CHANNEL_ID`         | (optional) Target Slack channel ID for notifications. Disabled if not set.                                                             |
-| `ENVIRONMENT`              | (optional) The environment name the script operates against (e.g., `staging`). Only used when Slack notifications are enabled.         |
-| `NEW_RELIC_ALERT_POLICIES` | (optional) Comma-separated list of New Relic alert policy IDs to disable during environment scale downs. Disabled if not set.          |
-| `NEW_RELIC_API_KEY`        | (optional) API key to use when managing New Relic alerts during scaling. Disabled if not set.                                          |
-| `NEW_RELIC_REGION`         | (optional) New Relic region to use. Defaults to `eu`.                                                                                  |
-| `MANAGE_CLOUDWATCH_ALARMS` | (optional) Disable all Cloudwatch alarms in the AWS account during scale down. Disabled if not set. Set to non-empty string to enable. |
+| Environment Variable          | Purpose                                                                                                                                |
+|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| `SCALE_ACTION`                | Defines whether to scale resources up or down (can be `ScaleUp` or `ScaleDown`).                                                       |
+| `KUBE_CONTEXT`                | (optional) If running locally this specifies the Kubernetes context to operate in (e.g., `docker-desktop`).                            |
+| `LOG_LEVEL`                   | (optional) Sets the logging verbosity level (e.g., `info`, `debug`). Defaults to info.                                                 |
+| `SUSPEND_CRONJOB`             | (optional) Whether to suspend CronJobs during scale down and then enable after scale up. Defaults to true.                             |
+| `SUSPEND_KEDA_SCALED_OBJECTS` | (optional) Pause all Keda ScaledObjects during scale down. Defaults to false.                                                          |
+| `SLACK_API_TOKEN`             | (optional) API token used to send scaling failure messages to Slack. Disabled if not set.                                              |
+| `SLACK_CHANNEL_ID`            | (optional) Target Slack channel ID for notifications. Disabled if not set.                                                             |
+| `ENVIRONMENT`                 | (optional) The environment name the script operates against (e.g., `staging`). Only used when Slack notifications are enabled.         |
+| `NEW_RELIC_ALERT_POLICIES`    | (optional) Comma-separated list of New Relic alert policy IDs to disable during environment scale downs. Disabled if not set.          |
+| `NEW_RELIC_API_KEY`           | (optional) API key to use when managing New Relic alerts during scaling. Disabled if not set.                                          |
+| `NEW_RELIC_REGION`            | (optional) New Relic region to use. Defaults to `eu`.                                                                                  |
+| `MANAGE_CLOUDWATCH_ALARMS`    | (optional) Disable all Cloudwatch alarms in the AWS account during scale down. Disabled if not set. Set to non-empty string to enable. |
 
 ```shell
 # Scale cluster down using the "docker-desktop" k8s context
@@ -106,19 +109,20 @@ spec:
 <summary>During scale down:</summary>
 
 1. New Relic alert policies are suspended (if this functionality is enabled via envars)
-2. All CronJobs are suspended
+2. Keda ScaledObjects are paused (if this functionality is enabled via envars)
+3. All CronJobs are suspended
     - If the CronJob is already suspended then an `eks-env-scaledown/cronjob-was-disabled` annotation is added so it isn't re-enabled at scaleup
     - If any have an `app` label equal to `eks-env-scaledown` they are skipped (meant for managing this process)
-3. For all K8s Deployments and Statefulsets each is placed in a map group number based on the `eks-env-scaledown/startup-order` annotation (if set) e.g. "3". This must be a number from `0` -> `99`.
-4. For any which do not have the annotation set they default to group `100` which is scaled down first
-5. Iterates through the groups one at a time (highest to lowest):
+4. For all K8s Deployments and Statefulsets each is placed in a map group number based on the `eks-env-scaledown/startup-order` annotation (if set) e.g. "3". This must be a number from `0` -> `99`.
+5. For any which do not have the annotation set they default to group `100` which is scaled down first
+6. Iterates through the groups one at a time (highest to lowest):
    - If the replica count is already 0 then skips the resource
    - Sets the replica count to 0
    - Sets an annotation `eks-env-scaledown/original-replicas` containing the original number of replicas, used for scale up
    - Sets an annotation `eks-env-scaledown/updated-at` detailing the current date/time
    - Waits for all the pods to terminate before moving onto the next group
-6. Terminate any remaining pods, including ones which are not managed by a controller
-7. Any errors are alerted into Slack (if this functionality is enabled via envars)
+7. Terminate any remaining pods, including ones which are not managed by a controller
+8. Any errors are alerted into Slack (if this functionality is enabled via envars)
 
 
 </details>
@@ -138,6 +142,7 @@ spec:
     - If the CronJob has an `eks-env-scaledown/cronjob-was-disabled` annotation it is skipped as it was disabled prior to scale down
     - If any have an `app` label equal to `eks-env-scaledown` they are skipped (meant for managing this process)
 5. New Relic alert policies are re-enabled (if this functionality is enabled via envars)
-6. Any errors are alerted into Slack (if this functionality is enabled via envars)
+6. Keda ScaledObjects are resumed (if this functionality is enabled via envars)
+7. Any errors are alerted into Slack (if this functionality is enabled via envars)
 
 </details>

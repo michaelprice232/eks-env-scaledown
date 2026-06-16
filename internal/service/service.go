@@ -17,6 +17,7 @@ const (
 	originalReplicasAnnotationKey       = "eks-env-scaledown/original-replicas"
 	updatedAtAnnotationKey              = "eks-env-scaledown/updated-at"
 	cronJobWasDisabledAnnotationKey     = "eks-env-scaledown/cronjob-was-disabled"
+	kedaPausedKey                       = "autoscaling.keda.sh/paused"
 	defaultStartUpGroup             int = 100
 	cronJobAppName                      = "eks-env-scaledown"
 )
@@ -97,11 +98,25 @@ func (s *Service) envScaleUp() error {
 		}
 	}
 
+	if s.conf.SuspendKeda {
+		log.Info("Unpausing Keda ScaledObjects")
+		if err := s.updateKedaScaleObjects(config.ScaleUp); err != nil {
+			return fmt.Errorf("unpausing Keda ScaledObjects: %w", err)
+		}
+	}
+
 	return nil
 }
 
 func (s *Service) envScaleDown() error {
 	log.Info("Scaling environment down")
+
+	if s.conf.SuspendKeda {
+		log.Info("Pausing Keda ScaledObjects")
+		if err := s.updateKedaScaleObjects(config.ScaleDown); err != nil {
+			return fmt.Errorf("pausing Keda ScaledObjects: %w", err)
+		}
+	}
 
 	if s.conf.SuspendCronJob {
 		log.Info("Suspending all CronJobs except for the ones which manage this app", "AppLabel", cronJobAppName)
