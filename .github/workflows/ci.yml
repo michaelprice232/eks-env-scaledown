@@ -7,13 +7,19 @@ jobs:
 
     steps:
       - name: Clone git repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Get the go version from the mod file. Cache modules by default
       - name: setup-go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
       - name: Unit tests
         run: go test ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+

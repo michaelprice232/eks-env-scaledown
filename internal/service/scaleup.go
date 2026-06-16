@@ -22,7 +22,7 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 	}
 
 	for _, resource := range resources {
-		if resource.ResourceType == "deployment" {
+		if resource.ResourceType == resourceTypeDeployment {
 			// Use a retry function to handle conflicts on updates from concurrent changes
 			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
 			retryErr := retry.RetryOnConflict(s.retryBackoff, func() error {
@@ -55,10 +55,10 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 			if retryErr != nil {
 				return fmt.Errorf("failed to update deployment %s in Namespace %s: %w", resource.Name, resource.Namespace, retryErr)
 			}
-			log.Debug("Deployment scaled up", "deployment", resource.Name, "Namespace", resource.Namespace)
+			log.Debug("Deployment scaled up", resourceTypeDeployment, resource.Name, "Namespace", resource.Namespace)
 		}
 
-		if resource.ResourceType == "statefulset" {
+		if resource.ResourceType == resourceTypeStatefulSet {
 			// Use a retry function to handle conflicts on updates from concurrent changes
 			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
 			retryErr := retry.RetryOnConflict(s.retryBackoff, func() error {
@@ -91,7 +91,7 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 			if retryErr != nil {
 				return fmt.Errorf("failed to update %s %s in Namespace %s: %w", resource.ResourceType, resource.Name, resource.Namespace, retryErr)
 			}
-			log.Debug("Statefulset scaled up", "statefulset", resource.Name, "Namespace", resource.Namespace)
+			log.Debug("Statefulset scaled up", resourceTypeStatefulSet, resource.Name, "Namespace", resource.Namespace)
 		}
 	}
 
@@ -117,7 +117,7 @@ func (s *Service) waitForPodsReady(resources []*k8sResource) error {
 			}
 
 			for _, r := range resources {
-				if r.ResourceType == "deployment" {
+				if r.ResourceType == resourceTypeDeployment {
 					log.Debug("Checking if pods are updated and ready", "type", r.ResourceType, "resource", r.Name, "Namespace", r.Namespace)
 					deployment, err := s.conf.K8sClient.AppsV1().Deployments(r.Namespace).Get(ctx, r.Name, metav1.GetOptions{})
 					if err != nil {
@@ -132,7 +132,7 @@ func (s *Service) waitForPodsReady(resources []*k8sResource) error {
 					}
 					continue
 				}
-				if r.ResourceType == "statefulset" {
+				if r.ResourceType == resourceTypeStatefulSet {
 					log.Debug("Checking if pods are updated and ready", "type", r.ResourceType, "resource", r.Name, "Namespace", r.Namespace)
 					statefulset, err := s.conf.K8sClient.AppsV1().StatefulSets(r.Namespace).Get(ctx, r.Name, metav1.GetOptions{})
 					if err != nil {
@@ -160,7 +160,7 @@ func (s *Service) waitForPodsReady(resources []*k8sResource) error {
 func podsUpdatedAndReady(resources []*k8sResource) bool {
 	podsReady := true
 	for _, r := range resources {
-		if r.podsUpdatedAndReady == false {
+		if !r.podsUpdatedAndReady {
 			podsReady = false
 		}
 	}

@@ -22,6 +22,10 @@ rules:
     resources: ["pods"]
     verbs: ["list", "delete"]
 
+  - apiGroups: ["keda.sh"]
+    resources: ["scaledobjects"]
+    verbs: ["get", "list", "update"]
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

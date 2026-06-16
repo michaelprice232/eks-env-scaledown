@@ -1,3 +1,5 @@
+// Package service implements the core logic for scaling Kubernetes workloads
+// up and down, including ordering, CronJob suspension and Keda integration.
 package service
 
 import (
@@ -17,8 +19,13 @@ const (
 	originalReplicasAnnotationKey       = "eks-env-scaledown/original-replicas"
 	updatedAtAnnotationKey              = "eks-env-scaledown/updated-at"
 	cronJobWasDisabledAnnotationKey     = "eks-env-scaledown/cronjob-was-disabled"
+	cronJobWasDisabledValue             = "yes"
+	kedaPausedKey                       = "autoscaling.keda.sh/paused"
 	defaultStartUpGroup             int = 100
 	cronJobAppName                      = "eks-env-scaledown"
+
+	resourceTypeDeployment  = "deployment"
+	resourceTypeStatefulSet = "statefulset"
 )
 
 var (
@@ -37,6 +44,8 @@ type k8sResource struct {
 }
 
 type startUpOrder map[int][]*k8sResource
+
+// Service coordinates scaling the environment up or down based on the supplied config.
 type Service struct {
 	conf         config.Config
 	startUpOrder startUpOrder
@@ -44,6 +53,7 @@ type Service struct {
 	skipPodWait  bool
 }
 
+// NewService returns a Service configured with the supplied config.
 func NewService(c config.Config) (*Service, error) {
 	return &Service{
 		conf:         c,
@@ -51,6 +61,7 @@ func NewService(c config.Config) (*Service, error) {
 	}, nil
 }
 
+// Run scales the environment up or down depending on the configured ScaleAction.
 func (s *Service) Run() error {
 	switch s.conf.Action {
 	case config.ScaleUp:
@@ -80,7 +91,7 @@ func (s *Service) envScaleUp() error {
 		scaleOrder = append(scaleOrder, order)
 	}
 
-	sort.Sort(sort.IntSlice(scaleOrder))
+	sort.Ints(scaleOrder)
 	log.Debug("Scale up order", "order", scaleOrder)
 
 	for _, order := range scaleOrder {
@@ -97,11 +108,25 @@ func (s *Service) envScaleUp() error {
 		}
 	}
 
+	if s.conf.SuspendKeda {
+		log.Info("Unpausing Keda ScaledObjects")
+		if err := s.updateKedaScaleObjects(config.ScaleUp); err != nil {
+			return fmt.Errorf("unpausing Keda ScaledObjects: %w", err)
+		}
+	}
+
 	return nil
 }
 
 func (s *Service) envScaleDown() error {
 	log.Info("Scaling environment down")
+
+	if s.conf.SuspendKeda {
+		log.Info("Pausing Keda ScaledObjects")
+		if err := s.updateKedaScaleObjects(config.ScaleDown); err != nil {
+			return fmt.Errorf("pausing Keda ScaledObjects: %w", err)
+		}
+	}
 
 	if s.conf.SuspendCronJob {
 		log.Info("Suspending all CronJobs except for the ones which manage this app", "AppLabel", cronJobAppName)

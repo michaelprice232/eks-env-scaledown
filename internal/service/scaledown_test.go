@@ -40,7 +40,6 @@ func Test_scaleDownGroup_deployments(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-
 			s := &Service{
 				startUpOrder: startUpOrder{
 					tc.group: []*k8sResource{
@@ -77,7 +76,7 @@ func Test_scaleDownGroup_deployments(t *testing.T) {
 			// Simulate server side error
 			if tc.name == "K8s Server Error" {
 				k8sFakeClient := s.conf.K8sClient.(*fake.Clientset)
-				k8sFakeClient.Fake.PrependReactor("get", "deployments", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+				k8sFakeClient.PrependReactor("get", "deployments", func(_ k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, errors.New("server side error")
 				})
 			}
@@ -98,7 +97,6 @@ func Test_scaleDownGroup_deployments(t *testing.T) {
 				if tc.replicaCount == 0 {
 					assert.NotContains(t, result.Annotations, updatedAtAnnotationKey)
 					assert.NotContains(t, result.Annotations, originalReplicasAnnotationKey)
-
 				} else {
 					assert.Contains(t, result.Annotations, updatedAtAnnotationKey)
 					assert.Contains(t, result.Annotations, originalReplicasAnnotationKey)
@@ -135,7 +133,6 @@ func Test_scaleDownGroup_statefulsets(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-
 			s := &Service{
 				startUpOrder: startUpOrder{
 					tc.group: []*k8sResource{
@@ -172,7 +169,7 @@ func Test_scaleDownGroup_statefulsets(t *testing.T) {
 			// Simulate server side error
 			if tc.name == "K8s Server Error" {
 				k8sFakeClient := s.conf.K8sClient.(*fake.Clientset)
-				k8sFakeClient.Fake.PrependReactor("get", "statefulsets", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+				k8sFakeClient.PrependReactor("get", "statefulsets", func(_ k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, errors.New("server side error")
 				})
 			}
@@ -193,7 +190,6 @@ func Test_scaleDownGroup_statefulsets(t *testing.T) {
 				if tc.replicaCount == 0 {
 					assert.NotContains(t, result.Annotations, updatedAtAnnotationKey)
 					assert.NotContains(t, result.Annotations, originalReplicasAnnotationKey)
-
 				} else {
 					assert.Contains(t, result.Annotations, updatedAtAnnotationKey)
 					assert.Contains(t, result.Annotations, originalReplicasAnnotationKey)
@@ -344,7 +340,7 @@ func Test_waitForPodTermination(t *testing.T) {
 	// Fake K8s client doesn't display pod deletions by default e.g., list after delete. Adding a reactor to simulate this
 	podDeleted := false
 	k8sFakeClient := s.conf.K8sClient.(*fake.Clientset)
-	k8sFakeClient.Fake.PrependReactor("list", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+	k8sFakeClient.PrependReactor("list", "pods", func(_ k8stesting.Action) (bool, runtime.Object, error) {
 		if podDeleted {
 			return true, &v1.PodList{Items: []v1.Pod{}}, nil
 		}

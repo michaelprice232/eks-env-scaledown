@@ -22,7 +22,7 @@ func (s *Service) scaleDownGroup(groupNumber int) error {
 	}
 
 	for _, resource := range resources {
-		if resource.ResourceType == "deployment" {
+		if resource.ResourceType == resourceTypeDeployment {
 			// Use a retry function to handle conflicts on updates from concurrent changes
 			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
 			retryErr := retry.RetryOnConflict(s.retryBackoff, func() error {
@@ -52,10 +52,10 @@ func (s *Service) scaleDownGroup(groupNumber int) error {
 			if retryErr != nil {
 				return fmt.Errorf("failed to update deployment %s in Namespace %s: %w", resource.Name, resource.Namespace, retryErr)
 			}
-			log.Debug("Deployment scaled down", "deployment", resource.Name, "Namespace", resource.Namespace)
+			log.Debug("Deployment scaled down", resourceTypeDeployment, resource.Name, "Namespace", resource.Namespace)
 		}
 
-		if resource.ResourceType == "statefulset" {
+		if resource.ResourceType == resourceTypeStatefulSet {
 			// Use a retry function to handle conflicts on updates from concurrent changes
 			// https://github.com/kubernetes/client-go/tree/master/examples/create-update-delete-deployment
 			retryErr := retry.RetryOnConflict(s.retryBackoff, func() error {
@@ -85,7 +85,7 @@ func (s *Service) scaleDownGroup(groupNumber int) error {
 			if retryErr != nil {
 				return fmt.Errorf("failed to update %s %s in Namespace %s: %w", resource.ResourceType, resource.Name, resource.Namespace, retryErr)
 			}
-			log.Debug("Statefulset scaled down", "statefulset", resource.Name, "Namespace", resource.Namespace)
+			log.Debug("Statefulset scaled down", resourceTypeStatefulSet, resource.Name, "Namespace", resource.Namespace)
 		}
 	}
 
@@ -136,7 +136,7 @@ func (s *Service) waitForPodTermination(resources []*k8sResource) error {
 func podsStillRunning(resources []*k8sResource) bool {
 	var runningPods bool
 	for _, r := range resources {
-		if r.podsTerminated == false {
+		if !r.podsTerminated {
 			runningPods = true
 		}
 	}

@@ -1,3 +1,5 @@
+// Package notify provides integrations for managing alerting (CloudWatch, New Relic)
+// and sending notifications (Slack) during environment scaling.
 package notify
 
 import (
@@ -20,7 +22,7 @@ func UpdateCloudwatchAlarms(action string) error {
 
 	manageCloudwatchAlarms := os.Getenv("MANAGE_CLOUDWATCH_ALARMS")
 	if manageCloudwatchAlarms == "" {
-		log.Warn("MANAGE_CLOUDWATCH_ALARMS envar not set. Alarms will not be disable/or enabled")
+		log.Warn("MANAGE_CLOUDWATCH_ALARMS envar not set. Alarms will not be managed")
 		return nil
 	}
 

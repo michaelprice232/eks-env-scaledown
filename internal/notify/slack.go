@@ -7,6 +7,7 @@ import (
 	"github.com/slack-go/slack"
 )
 
+// SlackClient holds the Slack client and the context used when sending notifications.
 type SlackClient struct {
 	Client      *slack.Client
 	ChannelID   string
@@ -28,12 +29,13 @@ func NewSlackClient() *SlackClient {
 			Environment: environment,
 			ScaleAction: scaleAction,
 		}
-	} else {
-		log.Warn("SLACK_API_TOKEN and/or SLACK_CHANNEL_ID and/or ENVIRONMENT envar(s) not set. Disabling Slack notifications")
-		return nil
 	}
+
+	log.Warn("SLACK_API_TOKEN and/or SLACK_CHANNEL_ID and/or ENVIRONMENT envar(s) not set. Disabling Slack notifications")
+	return nil
 }
 
+// PostMessage sends a formatted error notification to the configured Slack channel.
 func PostMessage(slackClient *SlackClient, message string) error {
 	attachment := slack.Attachment{
 		Text: "Details",
@@ -65,6 +67,7 @@ func PostMessage(slackClient *SlackClient, message string) error {
 	return nil
 }
 
+// Slack sends msg to Slack if a SlackClient is configured, logging any send failure.
 func Slack(slackClient *SlackClient, msg string) {
 	if slackClient == nil {
 		return

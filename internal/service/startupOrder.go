@@ -38,7 +38,7 @@ func (s *Service) buildStartUpOrder() error {
 
 		res := &k8sResource{
 			Name:         d.Name,
-			ResourceType: "deployment",
+			ResourceType: resourceTypeDeployment,
 			Namespace:    d.Namespace,
 			ReplicaCount: *d.Spec.Replicas,
 			Selector:     selector,
@@ -47,13 +47,13 @@ func (s *Service) buildStartUpOrder() error {
 		if orderKey, found := d.Annotations[startupOrderAnnotationKey]; found {
 			so, err := strconv.Atoi(orderKey)
 			if err != nil {
-				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "deployment", d.Name, "Namespace", d.Namespace, "originalOrder", orderKey, "key", startupOrderAnnotationKey)
+				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", resourceTypeDeployment, d.Name, "Namespace", d.Namespace, "originalOrder", orderKey, "key", startupOrderAnnotationKey)
 				orders[defaultStartUpGroup] = append(orders[defaultStartUpGroup], res)
 				continue
 			}
 
 			if so < 0 || so >= defaultStartUpGroup {
-				log.Warn("startUpOrder number can only be from 0 to 99. Assigning to default group", "deployment", d.Name, "Namespace", d.Namespace, "originalOrder", so, "defaultGroup", defaultStartUpGroup)
+				log.Warn("startUpOrder number can only be from 0 to 99. Assigning to default group", resourceTypeDeployment, d.Name, "Namespace", d.Namespace, "originalOrder", so, "defaultGroup", defaultStartUpGroup)
 				orders[defaultStartUpGroup] = append(orders[defaultStartUpGroup], res)
 				continue
 			}
@@ -78,7 +78,7 @@ func (s *Service) buildStartUpOrder() error {
 
 		res := &k8sResource{
 			Name:         ss.Name,
-			ResourceType: "statefulset",
+			ResourceType: resourceTypeStatefulSet,
 			Namespace:    ss.Namespace,
 			ReplicaCount: *ss.Spec.Replicas,
 			Selector:     selector,
@@ -87,13 +87,13 @@ func (s *Service) buildStartUpOrder() error {
 		if orderKey, found := ss.Annotations[startupOrderAnnotationKey]; found {
 			so, err := strconv.Atoi(orderKey)
 			if err != nil {
-				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", "statefulset", ss.Name, "Namespace", ss.Namespace, "originalOrder", orderKey, "key", startupOrderAnnotationKey)
+				log.Warn("Unable to parse the int from the startup order key. Assigning to default group", resourceTypeStatefulSet, ss.Name, "Namespace", ss.Namespace, "originalOrder", orderKey, "key", startupOrderAnnotationKey)
 				orders[defaultStartUpGroup] = append(orders[defaultStartUpGroup], res)
 				continue
 			}
 
 			if so < 0 || so >= defaultStartUpGroup {
-				log.Warn("startUpOrder number can only be from 0 to 99. Assigning to default group", "statefulset", ss.Name, "Namespace", ss.Namespace, "originalOrder", so, "defaultGroup", defaultStartUpGroup)
+				log.Warn("startUpOrder number can only be from 0 to 99. Assigning to default group", resourceTypeStatefulSet, ss.Name, "Namespace", ss.Namespace, "originalOrder", so, "defaultGroup", defaultStartUpGroup)
 				orders[defaultStartUpGroup] = append(orders[defaultStartUpGroup], res)
 				continue
 			}

@@ -39,7 +39,7 @@ func (s *Service) updateCronJobs() error {
 
 			// Do not enable anything that was previously suspended
 			if s.conf.Action == config.ScaleUp {
-				if value, found := result.Annotations[cronJobWasDisabledAnnotationKey]; found && value == "yes" {
+				if value, found := result.Annotations[cronJobWasDisabledAnnotationKey]; found && value == cronJobWasDisabledValue {
 					log.Warn("CronJob was previously disabled. Skipping", "CronJob", cj.Name, "namespace", cj.Namespace)
 					return nil
 				}
@@ -47,9 +47,9 @@ func (s *Service) updateCronJobs() error {
 			}
 
 			if s.conf.Action == config.ScaleDown {
-				if *result.Spec.Suspend == true {
+				if *result.Spec.Suspend {
 					log.Warn("CronJob is already suspended. Setting annotation for scaleup run so it isn't enabled at scaleup", "CronJob", cj.Name, "namespace", cj.Namespace)
-					result.Annotations[cronJobWasDisabledAnnotationKey] = "yes"
+					result.Annotations[cronJobWasDisabledAnnotationKey] = cronJobWasDisabledValue
 				}
 				result.Spec.Suspend = boolPtr(true)
 			}

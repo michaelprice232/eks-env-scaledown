@@ -1,0 +1,30 @@
+version: "2"
+
+# Default linters (errcheck, govet, ineffassign, staticcheck, unused) are enabled
+# automatically. The list below adds the most commonly used additional linters.
+linters:
+  enable:
+    - bodyclose
+    - copyloopvar
+    - errorlint
+    - goconst
+    - gocritic
+    - gosec
+    - misspell
+    - nakedret
+    - prealloc
+    - revive
+    - unconvert
+    - unparam
+    - whitespace
+  exclusions:
+    rules:
+      # Repeated string literals in tests are fixture data, not magic constants.
+      - path: _test\.go
+        linters:
+          - goconst
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
