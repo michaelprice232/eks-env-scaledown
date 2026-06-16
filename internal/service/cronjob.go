@@ -47,7 +47,8 @@ func (s *Service) updateCronJobs() error {
 			}
 
 			if s.conf.Action == config.ScaleDown {
-				if *result.Spec.Suspend {
+				// Spec.Suspend is an optional pointer; a nil value means not suspended
+				if result.Spec.Suspend != nil && *result.Spec.Suspend {
 					log.Warn("CronJob is already suspended. Setting annotation for scaleup run so it isn't enabled at scaleup", "CronJob", cj.Name, "namespace", cj.Namespace)
 					result.Annotations[cronJobWasDisabledAnnotationKey] = cronJobWasDisabledValue
 				}
@@ -60,7 +61,7 @@ func (s *Service) updateCronJobs() error {
 			return updateErr
 		})
 		if retryErr != nil {
-			return fmt.Errorf("updating CronJob %s in namespace %s: %w", cj.Name, cj.Namespace, err)
+			return fmt.Errorf("updating CronJob %s in namespace %s: %w", cj.Name, cj.Namespace, retryErr)
 		}
 	}
 

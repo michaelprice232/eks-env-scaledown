@@ -40,9 +40,10 @@ func NewNewRelicClient() (*NewRelicClient, error) {
 	policyIDs := make([]int, 0, len(idsSplit))
 
 	for _, policy := range idsSplit {
+		policy = strings.TrimSpace(policy)
 		policy64, err := strconv.ParseInt(policy, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("unable to parse New Relic alert policy ID %s into an int", policy)
+			return nil, fmt.Errorf("unable to parse New Relic alert policy ID %q into an int", policy)
 		}
 		policyIDs = append(policyIDs, int(policy64))
 	}

@@ -36,11 +36,17 @@ func (s *Service) buildStartUpOrder() error {
 			return err
 		}
 
+		// Spec.Replicas is an optional pointer; the API server defaults an unset value to 1
+		replicaCount := int32(1)
+		if d.Spec.Replicas != nil {
+			replicaCount = *d.Spec.Replicas
+		}
+
 		res := &k8sResource{
 			Name:         d.Name,
 			ResourceType: resourceTypeDeployment,
 			Namespace:    d.Namespace,
-			ReplicaCount: *d.Spec.Replicas,
+			ReplicaCount: replicaCount,
 			Selector:     selector,
 		}
 
@@ -76,11 +82,17 @@ func (s *Service) buildStartUpOrder() error {
 			return err
 		}
 
+		// Spec.Replicas is an optional pointer; the API server defaults an unset value to 1
+		replicaCount := int32(1)
+		if ss.Spec.Replicas != nil {
+			replicaCount = *ss.Spec.Replicas
+		}
+
 		res := &k8sResource{
 			Name:         ss.Name,
 			ResourceType: resourceTypeStatefulSet,
 			Namespace:    ss.Namespace,
-			ReplicaCount: *ss.Spec.Replicas,
+			ReplicaCount: replicaCount,
 			Selector:     selector,
 		}
 

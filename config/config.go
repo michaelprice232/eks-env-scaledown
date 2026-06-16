@@ -46,6 +46,23 @@ func (c Config) validateAction() error {
 	}
 }
 
+// parseBoolEnv reads a boolean environment variable, returning def when the variable
+// is unset or cannot be parsed as a boolean.
+func parseBoolEnv(key string, def bool) bool {
+	val := os.Getenv(key)
+	if val == "" {
+		return def
+	}
+
+	parsed, err := strconv.ParseBool(val)
+	if err != nil {
+		log.Warn("Problem parsing boolean env var. Using default", "key", key, "value", val, "default", def)
+		return def
+	}
+
+	return parsed
+}
+
 // NewConfig builds a Config from environment variables and initialises the Kubernetes clients.
 func NewConfig() (Config, error) {
 	var conf Config
@@ -57,32 +74,10 @@ func NewConfig() (Config, error) {
 	}
 
 	// Whether to disable CronJobs (except the one managing this app) during the scaledown. Default to enable
-	suspendCronJobs := os.Getenv("SUSPEND_CRONJOB")
-	if suspendCronJobs == "" {
-		conf.SuspendCronJob = true
-	} else {
-		suspend, err := strconv.ParseBool(suspendCronJobs)
-		if err != nil {
-			log.Warn("Problem parsing SUSPEND_CRONJOB into a boolean. Defaulting to true")
-			conf.SuspendCronJob = true
-		} else {
-			conf.SuspendCronJob = suspend
-		}
-	}
+	conf.SuspendCronJob = parseBoolEnv("SUSPEND_CRONJOB", true)
 
 	// Whether to disable Keda ScaledObjects during the scaledown. Default to disabled
-	suspendKedaSO := os.Getenv("SUSPEND_KEDA_SCALED_OBJECTS")
-	if suspendKedaSO == "" {
-		conf.SuspendKeda = false
-	} else {
-		suspend, err := strconv.ParseBool(suspendKedaSO)
-		if err != nil {
-			log.Warn("Problem parsing SUSPEND_KEDA_SCALED_OBJECTS into a boolean. Defaulting to false")
-			conf.SuspendKeda = false
-		} else {
-			conf.SuspendKeda = suspend
-		}
-	}
+	conf.SuspendKeda = parseBoolEnv("SUSPEND_KEDA_SCALED_OBJECTS", false)
 
 	kc, dc, err := newK8sClients()
 	if err != nil {
