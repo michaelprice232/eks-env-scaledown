@@ -105,13 +105,14 @@ func (s *Service) scaleUpGroup(groupNumber int) error {
 }
 
 func (s *Service) waitForPodsReady(resources []*k8sResource) error {
-	interval := time.Tick(timeInterval)
+	ticker := time.NewTicker(timeInterval)
+	defer ticker.Stop()
 	ctx, cancelCtx := context.WithTimeout(context.Background(), timeout)
 	defer cancelCtx()
 
 	for {
 		select {
-		case <-interval:
+		case <-ticker.C:
 			if podsUpdatedAndReady(resources) {
 				return nil
 			}
@@ -123,9 +124,14 @@ func (s *Service) waitForPodsReady(resources []*k8sResource) error {
 					if err != nil {
 						return fmt.Errorf("getting deloyment %s in Namespace %s: %w", r.Name, r.Namespace, err)
 					}
-					if deployment.Status.AvailableReplicas == *deployment.Spec.Replicas &&
-						deployment.Status.UpdatedReplicas == *deployment.Spec.Replicas &&
-						deployment.Status.ReadyReplicas == *deployment.Spec.Replicas &&
+					// Spec.Replicas is an optional pointer; the API server defaults an unset value to 1
+					desired := int32(1)
+					if deployment.Spec.Replicas != nil {
+						desired = *deployment.Spec.Replicas
+					}
+					if deployment.Status.AvailableReplicas == desired &&
+						deployment.Status.UpdatedReplicas == desired &&
+						deployment.Status.ReadyReplicas == desired &&
 						deployment.Status.ObservedGeneration >= deployment.Generation {
 						r.podsUpdatedAndReady = true
 						log.Debug("Deployment ready", "type", r.ResourceType, "resource", r.Name, "Namespace", r.Namespace)
@@ -138,9 +144,14 @@ func (s *Service) waitForPodsReady(resources []*k8sResource) error {
 					if err != nil {
 						return fmt.Errorf("getting statefulset %s in Namespace %s: %w", r.Name, r.Namespace, err)
 					}
-					if statefulset.Status.AvailableReplicas == *statefulset.Spec.Replicas &&
-						statefulset.Status.UpdatedReplicas == *statefulset.Spec.Replicas &&
-						statefulset.Status.ReadyReplicas == *statefulset.Spec.Replicas &&
+					// Spec.Replicas is an optional pointer; the API server defaults an unset value to 1
+					desired := int32(1)
+					if statefulset.Spec.Replicas != nil {
+						desired = *statefulset.Spec.Replicas
+					}
+					if statefulset.Status.AvailableReplicas == desired &&
+						statefulset.Status.UpdatedReplicas == desired &&
+						statefulset.Status.ReadyReplicas == desired &&
 						statefulset.Status.ObservedGeneration >= statefulset.Generation {
 						r.podsUpdatedAndReady = true
 						log.Debug("Statefulset ready", "type", r.ResourceType, "resource", r.Name, "Namespace", r.Namespace)

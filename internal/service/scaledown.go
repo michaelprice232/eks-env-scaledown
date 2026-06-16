@@ -99,13 +99,14 @@ func (s *Service) scaleDownGroup(groupNumber int) error {
 }
 
 func (s *Service) waitForPodTermination(resources []*k8sResource) error {
-	interval := time.Tick(timeInterval)
+	ticker := time.NewTicker(timeInterval)
+	defer ticker.Stop()
 	ctx, cancelCtx := context.WithTimeout(context.Background(), timeout)
 	defer cancelCtx()
 
 	for {
 		select {
-		case <-interval:
+		case <-ticker.C:
 			if !podsStillRunning(resources) {
 				return nil
 			}

@@ -20,35 +20,42 @@ func main() {
 
 	slackClient := notify.NewSlackClient()
 
+	if err := run(); err != nil {
+		reportError(slackClient, err)
+	}
+}
+
+// run performs the full scale up/down workflow, returning a wrapped error on the
+// first failure. Keeping the logic out of main() makes it testable and confines
+// the os.Exit to a single place.
+func run() error {
 	nrClient, err := notify.NewNewRelicClient()
 	if err != nil {
-		reportError(slackClient, err, "creating New Relic client")
+		return fmt.Errorf("creating New Relic client: %w", err)
 	}
 
 	c, err := config.NewConfig()
 	if err != nil {
-		reportError(slackClient, err, "creating config")
+		return fmt.Errorf("creating config: %w", err)
 	}
 
 	if c.Action == config.ScaleDown {
-		err = notify.UpdateCloudwatchAlarms("disable")
-		if err != nil {
-			reportError(slackClient, err, "disabling Cloudwatch alarms")
+		if err = notify.UpdateCloudwatchAlarms("disable"); err != nil {
+			return fmt.Errorf("disabling Cloudwatch alarms: %w", err)
 		}
 
-		err = notify.UpdateNewRelicAlertPolicy(nrClient, notify.ScaleDown)
-		if err != nil {
-			reportError(slackClient, err, "updating New Relic")
+		if err = notify.UpdateNewRelicAlertPolicy(nrClient, notify.ScaleDown); err != nil {
+			return fmt.Errorf("updating New Relic: %w", err)
 		}
 	}
 
 	s, err := service.NewService(c)
 	if err != nil {
-		reportError(slackClient, err, "creating service")
+		return fmt.Errorf("creating service: %w", err)
 	}
 
 	if err = s.Run(); err != nil {
-		reportError(slackClient, err, "running")
+		return fmt.Errorf("running: %w", err)
 	}
 
 	if c.Action == config.ScaleUp {
@@ -56,20 +63,20 @@ func main() {
 		log.Info("Waiting for services to stabilize before enabling alerts", "delay", alertEnableDelay)
 		time.Sleep(alertEnableDelay)
 
-		err = notify.UpdateCloudwatchAlarms("enable")
-		if err != nil {
-			reportError(slackClient, err, "enabling Cloudwatch alarms")
+		if err = notify.UpdateCloudwatchAlarms("enable"); err != nil {
+			return fmt.Errorf("enabling Cloudwatch alarms: %w", err)
 		}
 
-		err = notify.UpdateNewRelicAlertPolicy(nrClient, notify.ScaleUp)
-		if err != nil {
-			reportError(slackClient, err, "updating New Relic")
+		if err = notify.UpdateNewRelicAlertPolicy(nrClient, notify.ScaleUp); err != nil {
+			return fmt.Errorf("updating New Relic: %w", err)
 		}
 	}
+
+	return nil
 }
 
-func reportError(slackClient *notify.SlackClient, err error, message string) {
-	log.Error(message, "error", err)
-	notify.Slack(slackClient, fmt.Sprintf("error whilst %s: %v", message, err))
+func reportError(slackClient *notify.SlackClient, err error) {
+	log.Error("scaling the environment failed", "error", err)
+	notify.Slack(slackClient, fmt.Sprintf("error whilst scaling the environment: %v", err))
 	os.Exit(1)
 }
