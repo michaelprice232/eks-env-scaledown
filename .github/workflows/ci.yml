@@ -2,7 +2,7 @@ name: CI
 on: push
 
 jobs:
-  unit-tests:
+  test-and-lint:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,3 +23,47 @@ jobs:
         with:
           version: v2.12.2
 
+  build-and-push-image:
+    # Publish only from main, and only once tests + lint have passed
+    needs: test-and-lint
+    #if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    # Required for OIDC federation with AWS
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      AWS_ACCOUNT_ID: "077439031059"
+      AWS_REGION: eu-west-2
+      IAM_ROLE: GithubActionsECRAndBuildArtefacts
+      ECR_REPOSITORY: eks-env-scaledown
+
+    steps:
+      - name: Clone git repo
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.IAM_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # QEMU enables emulating the arm64 platform on the amd64 runner
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
