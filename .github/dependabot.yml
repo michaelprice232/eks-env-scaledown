@@ -1,0 +1,26 @@
+# Dependabot keeps Go modules and GitHub Actions up to date automatically.
+#
+# A 7-day cooldown delays each update PR until the new release has been public for a week. This is a
+# supply-chain safeguard: malicious or broken releases are often yanked within days, so waiting avoids
+# auto-adopting a compromised version the moment it ships.
+#
+# GitHub Actions are pinned to a commit SHA (with the semver tag in a trailing comment); Dependabot
+# reads that comment to track versions and updates both the SHA and the comment when bumping.
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    # Both the production module and the separate e2e test module.
+    directories:
+      - "/"
+      - "/test/e2e"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
