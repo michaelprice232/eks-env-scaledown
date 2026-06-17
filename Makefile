@@ -1,5 +1,7 @@
 KUBE_CONTEXT ?= docker-desktop
 
+.PHONY: test lint cover test-e2e scale-up scale-down build-docker
+
 test:
 	go test -v ./...
 
