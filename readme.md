@@ -73,6 +73,11 @@ CI runs via GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.
 3. **Build & push** - the multi-arch (`amd64`/`arm64`) Docker image is built and pushed to ECR, tagged
    with the semver on `main` or the git SHA on other branches. AWS authentication uses an OIDC IAM role.
 
+A separate workflow ([`.github/workflows/e2e.yml`](./.github/workflows/e2e.yml)) runs the end-to-end
+suite (see [`test/e2e`](./test/e2e)) against a real, local [kind](https://kind.sigs.k8s.io/) cluster. It
+runs only on pull requests targeting `main` — the suite is slow and provisions throwaway clusters — so
+it gates merges while the default workflow above keeps running on every push.
+
 ## Startup/Shutdown ordering
 
 You can define a startup order to `Deployments` and `Statefulsets` which will determine the startup order (lowest -> highest)
