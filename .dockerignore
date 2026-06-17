@@ -1,0 +1,11 @@
+# The image only needs the Go sources (cmd/, config/, internal/) + go.mod/go.sum.
+# Keep the build context small and deterministic by excluding everything else.
+.git
+.github
+.idea
+test
+terraform
+manifests
+*.md
+coverage.out
+Makefile

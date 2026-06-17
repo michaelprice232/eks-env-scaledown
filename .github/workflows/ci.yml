@@ -4,7 +4,7 @@
 #                             next semver is calculated from the conventional commits since the last
 #                             tag (feat -> minor, fix -> patch, breaking -> major, otherwise patch)
 #                             and that git tag is pushed. On any other branch the long git SHA is used.
-#   3. build-and-push-image - build the multi-arch (amd64/arm64) image and push it to ECR, tagged with
+#   3. build-and-push-image - build the multi-arch (linux amd64/arm64) image and push it to ECR, tagged with
 #                             the semver on main or the git SHA on other branches.
 name: CI
 
@@ -83,9 +83,9 @@ jobs:
 
     env:
       AWS_ACCOUNT_ID: "633681147894"
-      AWS_REGION: eu-west-2
+      AWS_REGION: "eu-west-2"
       IAM_ROLE: "github-actions-oidc"
-      ECR_REPOSITORY: eks-env-scaledown
+      ECR_REPOSITORY: "eks-env-scaledown"
 
     steps:
       - name: Clone git repo

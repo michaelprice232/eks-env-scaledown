@@ -1,0 +1,38 @@
+# A deployment with startup-order 1 (shut down before the statefulset's order 0) and a slow preStop
+# hook, simulating a web server that takes a little while to drain/shut down cleanly. The tool must
+# wait for it to fully terminate before scaling down the next (lower-ordered) group.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slow-shutdown
+  labels:
+    app: slow-shutdown
+  annotations:
+    eks-env-scaledown/startup-order: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: slow-shutdown
+  template:
+    metadata:
+      labels:
+        app: slow-shutdown
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: app
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            limits:
+              memory: 50Mi
+            requests:
+              cpu: 50m
+              memory: 10Mi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]

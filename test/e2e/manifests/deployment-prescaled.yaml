@@ -1,0 +1,33 @@
+# A deployment that is already scaled to zero with the eks-env-scaledown/original-replicas
+# annotation set, as if a previous scale-down had run. This lets the scale-up E2E test exercise
+# the restore path without depending on the scale-down test having run first.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-prescaled
+  labels:
+    app: nginx-prescaled
+  annotations:
+    eks-env-scaledown/original-replicas: "2"
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: nginx-prescaled
+  template:
+    metadata:
+      labels:
+        app: nginx-prescaled
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            limits:
+              memory: 50Mi
+            requests:
+              cpu: 50m
+              memory: 10Mi
