@@ -28,6 +28,7 @@ The following environment variables are available:
 | `LOG_LEVEL`                   | (optional) Sets the logging verbosity level (e.g., `info`, `debug`). Defaults to info.                                                 |
 | `SUSPEND_CRONJOB`             | (optional) Whether to suspend CronJobs during scale down and then enable after scale up. Defaults to true.                             |
 | `SUSPEND_KEDA_SCALED_OBJECTS` | (optional) Pause all Keda ScaledObjects during scale down. Defaults to false.                                                          |
+| `ALERT_STABILIZATION_DELAY`   | (optional) How long scale up waits for workloads to settle before re-enabling alerts (Go duration, e.g. `10m`, `0s`). Defaults to 10m. |
 | `SLACK_API_TOKEN`             | (optional) API token used to send scaling failure messages to Slack. Disabled if not set.                                              |
 | `SLACK_CHANNEL_ID`            | (optional) Target Slack channel ID for notifications. Disabled if not set.                                                             |
 | `ENVIRONMENT`                 | (optional) The environment name the script operates against (e.g., `staging`). Only used when Slack notifications are enabled.         |
