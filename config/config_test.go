@@ -2,6 +2,7 @@ package config
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -57,6 +58,33 @@ func TestParseBoolEnv(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.expected, parseBoolEnv(key, tc.def))
+		})
+	}
+}
+
+func TestParseDurationEnv(t *testing.T) {
+	const key = "TEST_PARSE_DURATION_ENV"
+
+	tests := []struct {
+		name     string
+		set      bool
+		value    string
+		def      time.Duration
+		expected time.Duration
+	}{
+		{name: "unset returns default", set: false, def: 10 * time.Minute, expected: 10 * time.Minute},
+		{name: "valid duration overrides default", set: true, value: "30s", def: 10 * time.Minute, expected: 30 * time.Second},
+		{name: "zero is honoured", set: true, value: "0s", def: 10 * time.Minute, expected: 0},
+		{name: "unparseable falls back to default", set: true, value: "soon", def: 5 * time.Minute, expected: 5 * time.Minute},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.set {
+				t.Setenv(key, tc.value)
+			}
+
+			assert.Equal(t, tc.expected, parseDurationEnv(key, tc.def))
 		})
 	}
 }

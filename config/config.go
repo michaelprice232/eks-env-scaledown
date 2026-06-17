@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"path/filepath"
 
@@ -28,6 +29,10 @@ const (
 	ScaleDown ScaleAction = "ScaleDown"
 )
 
+// defaultAlertStabilizationDelay is how long scale-up waits for workloads to settle
+// before re-enabling alerts, when ALERT_STABILIZATION_DELAY is not set.
+const defaultAlertStabilizationDelay = 10 * time.Minute
+
 // Config holds the runtime configuration and Kubernetes clients for the application.
 type Config struct {
 	K8sClient        kubernetes.Interface
@@ -35,6 +40,10 @@ type Config struct {
 	Action           ScaleAction
 	SuspendCronJob   bool
 	SuspendKeda      bool
+
+	// AlertStabilizationDelay is how long scale-up waits after restoring workloads
+	// before re-enabling alerts, giving the services time to settle.
+	AlertStabilizationDelay time.Duration
 }
 
 func (c Config) validateAction() error {
@@ -63,6 +72,23 @@ func parseBoolEnv(key string, def bool) bool {
 	return parsed
 }
 
+// parseDurationEnv reads a Go duration environment variable (e.g. "10m", "0s"), returning def
+// when the variable is unset or cannot be parsed as a duration.
+func parseDurationEnv(key string, def time.Duration) time.Duration {
+	val := os.Getenv(key)
+	if val == "" {
+		return def
+	}
+
+	parsed, err := time.ParseDuration(val)
+	if err != nil {
+		log.Warn("Problem parsing duration env var. Using default", "key", key, "value", val, "default", def)
+		return def
+	}
+
+	return parsed
+}
+
 // NewConfig builds a Config from environment variables and initialises the Kubernetes clients.
 func NewConfig() (Config, error) {
 	var conf Config
@@ -78,6 +104,9 @@ func NewConfig() (Config, error) {
 
 	// Whether to disable Keda ScaledObjects during the scaledown. Default to disabled
 	conf.SuspendKeda = parseBoolEnv("SUSPEND_KEDA_SCALED_OBJECTS", false)
+
+	// How long scale-up waits for workloads to stabilize before re-enabling alerts. Default to 10m
+	conf.AlertStabilizationDelay = parseDurationEnv("ALERT_STABILIZATION_DELAY", defaultAlertStabilizationDelay)
 
 	kc, dc, err := newK8sClients()
 	if err != nil {
