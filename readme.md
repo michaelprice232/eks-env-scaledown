@@ -53,11 +53,17 @@ Sample K8s manifests are available in the [manifests directory](./manifests) for
 ## Running tests
 
 ```shell
+# Linters
+make lint
+
 # Unit tests
 make test
 
 # Unit tests with HTML test coverage report
 make cover
+
+# E2E tests
+make test-e2e
 ```
 
 ## CI & Releases
@@ -97,7 +103,7 @@ metadata:
 
 ## Deploying to a real environment
 
-See [example config](./manifests/controller)
+See [example manifest config](./manifests/controller) and [provision an ephemeral EKS cluster](./terraform) with sample K8s workloads.
 
 ## Ignoring the CronJob and Pod that runs the eks-env-scaledown process
 
