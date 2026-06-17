@@ -1,0 +1,28 @@
+# Runs the app once with SCALE_ACTION=ScaleDown. A Job (not the CronJob from
+# manifests/controller) so it executes immediately, and stripped of the New Relic /
+# Slack secret references so it starts without those secrets present.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: eks-env-scaledown-down
+  namespace: eks-env-scaledown
+  labels:
+    app: "eks-env-scaledown"
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: "eks-env-scaledown" # excludes this pod from terminateStandalonePods
+    spec:
+      serviceAccountName: eks-env-scaledown
+      restartPolicy: Never
+      containers:
+        - name: app
+          image: eks-env-scaledown:e2e
+          imagePullPolicy: Never # image is loaded into kind, never pulled from a registry
+          env:
+            - name: SCALE_ACTION
+              value: ScaleDown
+            - name: LOG_LEVEL
+              value: info
