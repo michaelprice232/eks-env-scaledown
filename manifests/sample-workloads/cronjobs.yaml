@@ -10,7 +10,7 @@ spec:
         spec:
           containers:
             - name: hello
-              image: busybox
+              image: busybox:1.38
               args:
                 - /bin/sh
                 - -c
@@ -30,7 +30,7 @@ spec:
         spec:
           containers:
             - name: hello
-              image: busybox
+              image: busybox:1.38
               args:
                 - /bin/sh
                 - -c
