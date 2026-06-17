@@ -1,4 +1,3 @@
-
 variable "environment" {
   description = "The environment we are deploying to"
   type        = string
@@ -8,7 +7,7 @@ variable "environment" {
 variable "region" {
   description = "AWS region we are deploying to"
   type        = string
-  default     = "eu-west-1"
+  default     = "eu-west-2"
 }
 
 variable "vpc_cidr_block" {
@@ -20,7 +19,7 @@ variable "vpc_cidr_block" {
 variable "eks_k8s_version" {
   description = "Version of K8s to run"
   type        = string
-  default     = "1.32"
+  default     = "1.36"
 }
 
 variable "cluster_enabled_log_types" {
