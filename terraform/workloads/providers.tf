@@ -15,7 +15,7 @@ provider "kubernetes" {
 
   # Annotations which are managed by the Go app as part of the env scale down, that we don't want Terraform to remove
   ignore_annotations = [
-  "^eks-env-scaledown.*"
+    "^eks-env-scaledown.*"
   ]
 }
 

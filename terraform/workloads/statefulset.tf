@@ -48,8 +48,8 @@ resource "kubernetes_stateful_set_v1" "apache_httpd" {
         }
 
         container {
-          name              = "app"
-          image             = "httpd:2.4"
+          name  = "app"
+          image = "httpd:2.4"
 
           port {
             container_port = 80
