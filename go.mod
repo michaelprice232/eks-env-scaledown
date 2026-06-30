@@ -5,7 +5,7 @@ go 1.26.4
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.59.0
-	github.com/newrelic/newrelic-client-go/v2 v2.89.0
+	github.com/newrelic/newrelic-client-go/v2 v2.90.0
 	github.com/slack-go/slack v0.26.0
 	github.com/stretchr/testify v1.11.1
 	k8s.io/api v0.36.2
