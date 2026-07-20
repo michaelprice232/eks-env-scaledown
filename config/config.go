@@ -165,6 +165,18 @@ func newK8sClients() (*kubernetes.Clientset, *dynamic.DynamicClient, error) {
 		}
 	}
 
+	// Raise the client-go local rate limits above the conservative defaults
+	// (QPS=5, Burst=10). Scale-up polls every resource in a startup group every
+	// couple of seconds while waiting for pods to become ready, on top of the
+	// cluster-wide List and per-resource Update calls. A group of a few dozen
+	// resources easily exceeds the default sustained QPS, so client-go throttles
+	// the requests locally (independently of any server-side throttling) and the
+	// backlog can grow until it exceeds the readiness loop's context deadline.
+	// QPS=50/Burst=100 comfortably covers polling ~100 resources every 2s with
+	// headroom for the initial burst where a whole group is polled on one tick.
+	config.QPS = 50
+	config.Burst = 100
+
 	client, err = kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating K8s client: %w", err)

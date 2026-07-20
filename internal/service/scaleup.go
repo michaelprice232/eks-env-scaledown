@@ -118,11 +118,20 @@ func (s *Service) waitForPodsReady(resources []*k8sResource) error {
 			}
 
 			for _, r := range resources {
+				// Skip resources already confirmed ready so we stop re-Getting them
+				// on every tick. Each tick otherwise polls every resource in the group,
+				// which is a sustained load on the client's local rate limiter; as more
+				// resources become ready the per-tick call count shrinks toward zero,
+				// keeping the rate limiter's backlog bounded rather than growing until
+				// it exceeds the context deadline.
+				if r.podsUpdatedAndReady {
+					continue
+				}
 				if r.ResourceType == resourceTypeDeployment {
 					log.Debug("Checking if pods are updated and ready", "type", r.ResourceType, "resource", r.Name, "Namespace", r.Namespace)
 					deployment, err := s.conf.K8sClient.AppsV1().Deployments(r.Namespace).Get(ctx, r.Name, metav1.GetOptions{})
 					if err != nil {
-						return fmt.Errorf("getting deloyment %s in Namespace %s: %w", r.Name, r.Namespace, err)
+						return fmt.Errorf("getting deployment %s in Namespace %s: %w", r.Name, r.Namespace, err)
 					}
 					// Spec.Replicas is an optional pointer; the API server defaults an unset value to 1
 					desired := int32(1)
